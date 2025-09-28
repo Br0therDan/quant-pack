@@ -1,5 +1,5 @@
 [project]
-name = "quant-pack"
+name = "mysingle-quant"
 version = "0.1.0"
 description = "Common utilities and configurations for Quant Platform microservices"
 readme = "README.md"
