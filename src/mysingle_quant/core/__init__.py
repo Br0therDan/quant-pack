@@ -1,5 +1,5 @@
 from .app_factory import AppConfig, create_fastapi_app, create_lifespan
-from .config import CommonSettings, settings
+from .config import CommonSettings, get_settings, settings
 from .db import get_database_name, get_mongodb_url, init_mongo
 from .health import (
     HealthStatus,
@@ -18,6 +18,7 @@ from .metrics import (
 __all__ = [
     "settings",
     "CommonSettings",
+    "get_settings",
     "AppConfig",
     "create_lifespan",
     "create_fastapi_app",
