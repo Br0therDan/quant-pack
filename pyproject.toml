@@ -46,5 +46,4 @@ disallow_incomplete_defs = true
 ignore_missing_imports = true
 no_implicit_optional = true
 show_error_codes = true
-packages = ["mysingle_quant"]
 mypy_path = "src"
