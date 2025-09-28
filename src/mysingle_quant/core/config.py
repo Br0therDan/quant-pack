@@ -43,7 +43,6 @@ class CommonSettings(BaseSettings):
     ALGORITHM: str = Field(default="HS256", description="JWT algorithm")
 
     # API Settings
-    API_PREFIX: str = Field(default="/api/v1", description="API prefix")
     CORS_ORIGINS: list[str] = Field(
         default=["http://localhost:3000", "http://localhost:8000"],
         description="CORS origins",
