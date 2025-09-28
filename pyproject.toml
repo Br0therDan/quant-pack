@@ -27,7 +27,7 @@ dev = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/quant-pack"]
+packages = ["src/mysingle_quant"]
 
 [tool.black]
 line-length = 88
@@ -46,3 +46,5 @@ disallow_incomplete_defs = true
 ignore_missing_imports = true
 no_implicit_optional = true
 show_error_codes = true
+packages = ["mysingle_quant"]
+mypy_path = "src"

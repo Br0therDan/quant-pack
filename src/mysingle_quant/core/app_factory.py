@@ -194,8 +194,13 @@ def create_fastapi_app_with_config(config: AppConfig) -> FastAPI:
     # Add metrics middleware
     if config.enable_metrics:
         try:
-            metrics_middleware = create_metrics_middleware(config.service_name)
-            app.add_middleware(metrics_middleware)
+            from .metrics import MetricsMiddleware, get_metrics_collector
+
+            # Initialize metrics collector first
+            create_metrics_middleware(config.service_name)
+            # Add middleware with collector
+            collector = get_metrics_collector()
+            app.add_middleware(MetricsMiddleware, collector=collector)
             print(f"📊 Metrics middleware enabled for {config.service_name}")
         except Exception as e:
             print(f"⚠️ Failed to add metrics middleware: {e}")
