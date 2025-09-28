@@ -56,18 +56,12 @@ def create_lifespan(config: AppConfig) -> Callable:
         # Initialize database if enabled
         if config.enable_database and config.document_models:
             try:
-                if not settings.DEV_MODE:
-                    client = await init_mongo(
-                        config.document_models,
-                        config.service_name,
-                    )
-                    startup_tasks.append(("mongodb_client", client))
-                    print(f"✅ Connected to MongoDB for {config.service_name}")
-                else:
-                    print(
-                        f"🚧 Running {config.service_name} "
-                        "in development mode (no database)"
-                    )
+                client = await init_mongo(
+                    config.document_models,
+                    config.service_name,
+                )
+                startup_tasks.append(("mongodb_client", client))
+                print(f"✅ Connected to MongoDB for {config.service_name}")
             except Exception as e:
                 print(f"❌ Failed to connect to MongoDB: {e}")
                 if not settings.MOCK_DATABASE:
