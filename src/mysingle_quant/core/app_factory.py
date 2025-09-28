@@ -144,7 +144,7 @@ def create_fastapi_app(
     )
 
     # Application metadata
-    app_title = config.title or f"Quant {config.service_name.replace('-', ' ').title()}"
+    app_title = f"Quant {config.service_name.replace('-', ' ').title()}"
     app_description = config.description or f"{config.service_name} for Quant Platform"
 
     # Check if we're in development
