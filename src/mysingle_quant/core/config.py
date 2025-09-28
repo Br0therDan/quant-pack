@@ -32,6 +32,10 @@ class CommonSettings(BaseSettings):
     MONGODB_DATABASE_PREFIX: str = Field(default="q", description="Database prefix")
     MONGODB_AUTH_SOURCE: str = Field(default="admin", description="MongoDB auth source")
 
+    ALPHA_VANTAGE_API_KEY: str = Field(
+        default="demo", description="Alpha Vantage API Key"
+    )
+
     # Security Settings
     SECRET_KEY: str = Field(
         default="dev-secret-key-change-in-production", description="Secret key for JWT"
@@ -83,11 +87,6 @@ class CommonSettings(BaseSettings):
                     origins.append(origin)
 
         return origins
-
-    def get_database_name(self, service_name: str) -> str:
-        """Get database name for a service."""
-        clean_service = service_name.replace("-", "_").replace(" ", "_").lower()
-        return f"{self.MONGODB_DATABASE_PREFIX}_{clean_service}"
 
 
 # Global settings instance
