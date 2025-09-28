@@ -19,13 +19,13 @@ async def init_mongo(
     if settings.ENVIRONMENT in ["production", "staging"]:
         mongodb_url = (
             f"mongodb+srv://{admin_user}:{admin_password}"
-            f"@{settings.MONGODB_HOST}/{service_name}?"
+            f"@{settings.MONGODB_SERVER}/{service_name}?"
             f"retryWrites=true&w=majority&appName=mysingle"
         )
     else:
         mongodb_url = (
             f"mongodb://{admin_user}:{admin_password}"
-            f"@{settings.MONGODB_HOST}/{service_name}?"
+            f"@{settings.MONGODB_SERVER}/{service_name}?"
             f"authSource=admin"
         )
 
@@ -53,13 +53,13 @@ def get_mongodb_url(service_name: str) -> str:
     if settings.ENVIRONMENT in ["production", "staging"]:
         mongodb_url = (
             f"mongodb+srv://{admin_user}:{admin_password}"
-            f"@{settings.MONGODB_HOST}/{service_name}?"
+            f"@{settings.MONGODB_SERVER}/{service_name}?"
             f"retryWrites=true&w=majority&appName=mysingle"
         )
     else:
         mongodb_url = (
             f"mongodb://{admin_user}:{admin_password}"
-            f"@{settings.MONGODB_HOST}/{service_name}?"
+            f"@{settings.MONGODB_SERVER}/{service_name}?"
             f"authSource=admin"
         )
     return mongodb_url

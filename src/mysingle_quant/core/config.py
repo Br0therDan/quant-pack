@@ -8,7 +8,7 @@ class CommonSettings(BaseSettings):
     """Common settings for all microservices."""
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=[".env"],
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="allow",  # Allow extra fields from .env
@@ -25,12 +25,9 @@ class CommonSettings(BaseSettings):
     MOCK_DATABASE: bool = Field(default=False, description="Use mock database")
 
     # Database Settings
-    MONGODB_HOST: str = Field(default="localhost", description="MongoDB host")
-    MONGODB_PORT: int = Field(default=27019, description="MongoDB port")
+    MONGODB_SERVER: str = Field(default="localhost:27019", description="MongoDB host")
     MONGODB_USERNAME: str = Field(default="root", description="MongoDB username")
     MONGODB_PASSWORD: str = Field(default="example", description="MongoDB password")
-    MONGODB_DATABASE_PREFIX: str = Field(default="q", description="Database prefix")
-    MONGODB_AUTH_SOURCE: str = Field(default="admin", description="MongoDB auth source")
 
     ALPHA_VANTAGE_API_KEY: str = Field(
         default="demo", description="Alpha Vantage API Key"
@@ -59,13 +56,6 @@ class CommonSettings(BaseSettings):
     MIN_CONNECTIONS_COUNT: int = Field(
         default=1, description="Min database connections"
     )
-
-    @property
-    def mongodb_url(self) -> str:
-        """Get MongoDB connection URL."""
-        if self.MONGODB_USERNAME and self.MONGODB_PASSWORD:
-            return f"mongodb://{self.MONGODB_USERNAME}:{self.MONGODB_PASSWORD}@{self.MONGODB_HOST}:{self.MONGODB_PORT}/?authSource={self.MONGODB_AUTH_SOURCE}"
-        return f"mongodb://{self.MONGODB_HOST}:{self.MONGODB_PORT}/"
 
     @property
     def all_cors_origins(self) -> list[str]:
