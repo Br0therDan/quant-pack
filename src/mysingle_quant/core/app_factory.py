@@ -27,6 +27,7 @@ class AppConfig:
 
     service_name: str
     service_version: str = "1.0.0"
+    environment: str = "development"
     title: str | None = None
     description: str | None = None
     # Database
@@ -125,6 +126,7 @@ def create_fastapi_app(
     Returns:
         Configured FastAPI application
     """
+    # Create configuration object
     config = AppConfig(
         service_name=service_name,
         service_version=service_version,
@@ -140,12 +142,6 @@ def create_fastapi_app(
         enable_health_check=enable_health_check,
         lifespan=lifespan,
     )
-
-    return create_fastapi_app_with_config(config)
-
-
-def create_fastapi_app_with_config(config: AppConfig) -> FastAPI:
-    """Create a FastAPI application with the given configuration."""
 
     # Application metadata
     app_title = config.title or f"Quant {config.service_name.replace('-', ' ').title()}"
