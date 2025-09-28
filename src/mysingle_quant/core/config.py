@@ -8,7 +8,7 @@ class CommonSettings(BaseSettings):
     """Common settings for all microservices."""
 
     model_config = SettingsConfigDict(
-        env_file=[".env"],
+        env_file=["../.env"],
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="allow",  # Allow extra fields from .env
