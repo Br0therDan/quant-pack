@@ -28,7 +28,6 @@ class AppConfig:
     service_name: str
     service_version: str = "1.0.0"
     environment: str = "development"
-    title: str | None = None
     description: str | None = None
     # Database
     enable_database: bool = True
@@ -94,7 +93,6 @@ def create_lifespan(config: AppConfig) -> Callable:
 def create_fastapi_app(
     service_name: str,
     service_version: str = "1.0.0",
-    title: str | None = None,
     description: str | None = None,
     enable_database: bool = True,
     document_models: list[type[Document]] | None = None,
@@ -130,7 +128,6 @@ def create_fastapi_app(
     config = AppConfig(
         service_name=service_name,
         service_version=service_version,
-        title=title,
         description=description,
         enable_database=enable_database,
         document_models=document_models,
