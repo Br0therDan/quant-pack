@@ -142,7 +142,9 @@ def create_fastapi_app(
 
     # Application metadata
     app_title = (
-        f"{settings.PROJECT_NAME} - {config.service_name.replace('-', ' ').title()}"
+        f"{settings.PROJECT_NAME} - "
+        f"{(config.service_name).replace('_', ' ').title()} "
+        f"[{(settings.ENVIRONMENT).capitalize()}]"
     )
     app_description = config.description or f"{config.service_name} for Quant Platform"
 
