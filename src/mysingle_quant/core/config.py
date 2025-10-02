@@ -26,9 +26,15 @@ class CommonSettings(BaseSettings):
     DEV_MODE: bool = Field(default=True, description="Development mode")
     MOCK_DATABASE: bool = Field(default=False, description="Use mock database")
 
-    SUPERUSER_EMAIL: EmailStr = "your_email@example.com"
-    SUPERUSER_PASSWORD: str = "change-this-admin-password"
-    SUPERUSER_FULLNAME: str = "Admin User"
+    SUPERUSER_EMAIL: EmailStr = Field(
+        default="your_email@example.com", description="Superuser email"
+    )
+    SUPERUSER_PASSWORD: str = Field(
+        default="change-this-admin-password", description="Superuser password"
+    )
+    SUPERUSER_FULLNAME: str = Field(
+        default="Admin User", description="Superuser full name"
+    )
 
     FRONTEND_URL: str = Field(
         default="http://localhost:3000", description="Frontend application URL"
