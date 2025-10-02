@@ -2,13 +2,17 @@
 
 import logging
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
 
 from mysingle_quant.auth.jwt import read_token
 
 from ..core.config import settings
-from .exceptions import *
+from .exceptions import (
+    AuthorizationFailed,
+    UserInactive,
+    UserNotExists,
+)
 from .models import User
 
 logger = logging.getLogger(__name__)
@@ -31,9 +35,7 @@ async def get_current_user(
     """
     user = await read_token(token, token_audience=["fastapi-users"])
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
-        )
+        raise UserNotExists(identifier="token", identifier_type="authenticated user")
     return user
 
 
@@ -49,10 +51,7 @@ def get_current_active_user(
     현재 사용자가 활성 사용자인지 확인
     """
     if not current_user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Inactive user",
-        )
+        raise UserInactive(user_id=str(current_user.id))
     return current_user
 
 
@@ -66,9 +65,8 @@ def get_current_active_verified_user(
     현재 사용자가 활성 사용자이고 이메일이 확인된 사용자인지 확인
     """
     if not current_user.is_verified:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Unverified email",
+        raise AuthorizationFailed(
+            "Email verification required", user_id=str(current_user.id)
         )
     return current_user
 
@@ -83,7 +81,7 @@ def get_current_active_superuser(
     현재 사용자가 슈퍼유저인지 검증
     """
     if not current_user.is_superuser:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions"
+        raise AuthorizationFailed(
+            "Superuser privileges required", user_id=str(current_user.id)
         )
     return current_user

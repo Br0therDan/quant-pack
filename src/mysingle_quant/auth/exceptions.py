@@ -137,7 +137,3 @@ class JWTStrategyDestroyNotSupportedError(AuthException):
 
     def __init__(self):
         super().__init__("JWT tokens cannot be destroyed")
-
-
-# 하위 호환성을 위한 별칭
-FastAPIUsersException = AuthException
