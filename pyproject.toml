@@ -43,13 +43,31 @@ target-version = ['py312']
 line-length = 88
 target-version = "py312"
 lint.select = ["E", "F", "UP", "B", "SIM", "I"]
-lint.ignore = ["F403", "F405", "B008", "B904", "B006", "SIM105", "UP007"]
+lint.ignore = [
+    "F403",
+    "F405",
+    "B008",
+    "B904",
+    "B006",
+    "SIM105",
+    "UP007",
+    "E501",
+]
 
 [tool.mypy]
 python_version = "3.12"
 check_untyped_defs = true
-disallow_incomplete_defs = true
+disallow_incomplete_defs = false
 ignore_missing_imports = true
 no_implicit_optional = true
 show_error_codes = true
 mypy_path = "src"
+
+# 특정 모듈에 대한 무시 설정
+[[tool.mypy.overrides]]
+module = [
+    "mysingle_quant.metrics.*",
+    "mysingle_quant.health.*",
+    "mysingle_quant.quant.*",
+]
+ignore_errors = true

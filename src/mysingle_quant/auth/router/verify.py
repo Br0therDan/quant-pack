@@ -12,7 +12,7 @@ from ..user_manager import UserManager
 user_manager = UserManager()
 
 
-def get_verify_router():
+def get_verify_router() -> APIRouter:
     router = APIRouter()
 
     @router.post(
@@ -22,7 +22,7 @@ def get_verify_router():
     async def request_verify_token(
         request: Request,
         email: EmailStr = Body(..., embed=True),
-    ):
+    ) -> None:
         try:
             user = await user_manager.get_by_email(email)
             await user_manager.request_verify(user, request)
@@ -42,7 +42,7 @@ def get_verify_router():
     async def verify(
         request: Request,
         token: str = Body(..., embed=True),
-    ):
+    ) -> UserResponse:
         # UserManager.verify에서 이미 적절한 예외를 발생시키므로
         # 직접 전파하도록 수정
         user = await user_manager.verify(token, request)

@@ -22,7 +22,7 @@ def get_reset_password_router() -> APIRouter:
     async def forgot_password(
         request: Request,
         email: EmailStr = Body(..., embed=True),
-    ):
+    ) -> None:
         try:
             user = await user_manager.get_by_email(email)
         except UserNotExists:
@@ -43,7 +43,7 @@ def get_reset_password_router() -> APIRouter:
         request: Request,
         token: str = Body(...),
         password: str = Body(...),
-    ):
+    ) -> None:
         # UserManager.reset_password에서 이미 적절한 예외를 발생시키므로
         # 직접 전파하도록 수정
         await user_manager.reset_password(token, password, request)

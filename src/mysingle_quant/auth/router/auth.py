@@ -26,7 +26,7 @@ def create_auth_router() -> APIRouter:
     async def login(
         request: Request,
         login_data: LoginRequest,
-    ):
+    ) -> LoginResponse:
         user = await user_manager.authenticate(
             username=login_data.username, password=login_data.password
         )
@@ -59,7 +59,7 @@ def create_auth_router() -> APIRouter:
     @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
     async def logout(
         current_user: User = Depends(get_current_active_verified_user),
-    ):
+    ) -> dict[str, str]:
         """로그아웃 엔드포인트. 현재는 클라이언트 측에서 "
         "토큰을 삭제하는 방식으로 처리합니다."""
         return {"message": "Successfully logged out"}

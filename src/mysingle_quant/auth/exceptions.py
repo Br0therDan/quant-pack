@@ -1,6 +1,6 @@
 """Auth 관련 사용자 정의 예외 클래스들"""
 
-from typing import Any, Optional
+from typing import Any
 
 
 class AuthException(Exception):
@@ -9,7 +9,7 @@ class AuthException(Exception):
     def __init__(
         self,
         message: str = "Authentication error occurred",
-        details: Optional[Any] = None,
+        details: Any | None = None,
     ):
         self.message = message
         self.details = details
@@ -19,7 +19,7 @@ class AuthException(Exception):
 class InvalidID(AuthException):
     """유효하지 않은 ID 예외"""
 
-    def __init__(self, id_value: Optional[Any] = None):
+    def __init__(self, id_value: Any | None = None):
         message = f"Invalid ID format: {id_value}" if id_value else "Invalid ID format"
         super().__init__(message, {"id": id_value})
 
@@ -27,7 +27,7 @@ class InvalidID(AuthException):
 class UserAlreadyExists(AuthException):
     """사용자가 이미 존재하는 예외"""
 
-    def __init__(self, email: Optional[str] = None):
+    def __init__(self, email: str | None = None):
         message = (
             f"User with email '{email}' already exists"
             if email
@@ -39,7 +39,7 @@ class UserAlreadyExists(AuthException):
 class UserNotExists(AuthException):
     """사용자가 존재하지 않는 예외"""
 
-    def __init__(self, identifier: Optional[str] = None, identifier_type: str = "user"):
+    def __init__(self, identifier: str | None = None, identifier_type: str = "user"):
         message = (
             f"{identifier_type.title()} '{identifier}' not found"
             if identifier
@@ -51,7 +51,7 @@ class UserNotExists(AuthException):
 class UserInactive(AuthException):
     """비활성 사용자 예외"""
 
-    def __init__(self, user_id: Optional[Any] = None):
+    def __init__(self, user_id: Any | None = None):
         message = f"User '{user_id}' is inactive" if user_id else "User is inactive"
         super().__init__(message, {"user_id": user_id})
 
@@ -59,7 +59,7 @@ class UserInactive(AuthException):
 class UserAlreadyVerified(AuthException):
     """이미 인증된 사용자 예외"""
 
-    def __init__(self, user_id: Optional[Any] = None):
+    def __init__(self, user_id: Any | None = None):
         message = (
             f"User '{user_id}' is already verified"
             if user_id
@@ -71,7 +71,7 @@ class UserAlreadyVerified(AuthException):
 class InvalidVerifyToken(AuthException):
     """유효하지 않은 인증 토큰 예외"""
 
-    def __init__(self, reason: Optional[str] = None):
+    def __init__(self, reason: str | None = None):
         message = (
             f"Invalid verification token: {reason}"
             if reason
@@ -83,7 +83,7 @@ class InvalidVerifyToken(AuthException):
 class InvalidResetPasswordToken(AuthException):
     """유효하지 않은 비밀번호 재설정 토큰 예외"""
 
-    def __init__(self, reason: Optional[str] = None):
+    def __init__(self, reason: str | None = None):
         message = (
             f"Invalid reset password token: {reason}"
             if reason
@@ -95,7 +95,7 @@ class InvalidResetPasswordToken(AuthException):
 class InvalidPasswordException(AuthException):
     """유효하지 않은 비밀번호 예외"""
 
-    def __init__(self, reason: Optional[Any] = None):
+    def __init__(self, reason: Any | None = None):
         self.reason = reason
         message = f"Invalid password: {reason}" if reason else "Invalid password"
         super().__init__(message, {"reason": reason})
@@ -112,7 +112,7 @@ class AuthorizationFailed(AuthException):
     """인가 실패 예외"""
 
     def __init__(
-        self, required_permission: Optional[str] = None, user_id: Optional[Any] = None
+        self, required_permission: str | None = None, user_id: Any | None = None
     ):
         message = (
             f"Authorization failed. Required: {required_permission}"

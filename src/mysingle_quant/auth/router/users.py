@@ -22,7 +22,7 @@ def get_users_router() -> APIRouter:
     )
     async def get_user_me(
         current_user: User = Depends(get_current_active_verified_user),
-    ):
+    ) -> UserResponse:
         return UserResponse.model_validate(current_user, from_attributes=True)
 
     @router.patch(
@@ -34,7 +34,7 @@ def get_users_router() -> APIRouter:
         request: Request,
         obj_in: UserUpdate,
         current_user: User = Depends(get_current_active_verified_user),
-    ):
+    ) -> UserResponse:
         # UserManager.update에서 이미 적절한 예외를 발생시키므로
         # 직접 전파하도록 수정
         user = await user_manager.update(
@@ -47,7 +47,7 @@ def get_users_router() -> APIRouter:
         response_model=UserResponse,
         dependencies=[Depends(get_current_active_superuser)],
     )
-    async def get_user(id: PydanticObjectId):
+    async def get_user(id: PydanticObjectId) -> UserResponse:
         user = await user_manager.get(id)
         if user is None:
             raise UserNotExists(identifier=str(id), identifier_type="user")
@@ -62,7 +62,7 @@ def get_users_router() -> APIRouter:
         id: PydanticObjectId,
         obj_in: UserUpdate,  # type: ignore
         request: Request,
-    ):
+    ) -> UserResponse:
         user = await user_manager.get(id)
         if user is None:
             raise UserNotExists(identifier=str(id), identifier_type="user")
@@ -83,7 +83,7 @@ def get_users_router() -> APIRouter:
     async def delete_user(
         id: PydanticObjectId,
         request: Request,
-    ):
+    ) -> None:
         user = await user_manager.get(id)
         if user is None:
             raise UserNotExists(identifier=str(id), identifier_type="user")

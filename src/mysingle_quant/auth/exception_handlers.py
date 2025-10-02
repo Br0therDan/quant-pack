@@ -203,7 +203,7 @@ EXCEPTION_HANDLERS: dict[type, Any] = {
 }
 
 
-def register_auth_exception_handlers(app) -> None:
+def register_auth_exception_handlers(app: Any) -> None:
     """FastAPI 앱에 Auth 예외 핸들러들을 등록"""
     for exception_type, handler in EXCEPTION_HANDLERS.items():
         app.add_exception_handler(exception_type, handler)

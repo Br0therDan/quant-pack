@@ -66,11 +66,13 @@ class UserManager:
         raise NotImplementedError()
 
     @staticmethod
-    def model_dump(model: BaseModel, *args, **kwargs) -> dict[str, Any]:
+    def model_dump(model: BaseModel, *args: Any, **kwargs: Any) -> dict[str, Any]:
         return model.model_dump(*args, **kwargs)
 
     @staticmethod
-    def model_validate(schema: type[BaseModel], obj: Any, *args, **kwargs) -> BaseModel:
+    def model_validate(
+        schema: type[BaseModel], obj: Any, *args: Any, **kwargs: Any
+    ) -> BaseModel:
         return schema.model_validate(obj, *args, **kwargs)
 
     async def get(self, id: PydanticObjectId) -> User:
