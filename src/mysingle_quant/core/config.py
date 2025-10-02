@@ -1,6 +1,8 @@
 """Common configuration settings for all microservices."""
 
-from pydantic import Field
+from typing import Self
+
+from pydantic import Field, computed_field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -24,6 +26,9 @@ class CommonSettings(BaseSettings):
     DEV_MODE: bool = Field(default=True, description="Development mode")
     MOCK_DATABASE: bool = Field(default=False, description="Use mock database")
 
+    FRONTEND_URL: str = Field(
+        default="http://localhost:3000", description="Frontend application URL"
+    )
     # Database Settings
     MONGODB_SERVER: str = Field(default="localhost:27019", description="MongoDB host")
     MONGODB_USERNAME: str = Field(default="root", description="MongoDB username")
@@ -50,6 +55,21 @@ class CommonSettings(BaseSettings):
         default=60, description="Verify user token expiration in minutes"
     )
     ALGORITHM: str = Field(default="HS256", description="JWT algorithm")
+
+    EMAIL_TOKEN_EXPIRE_HOURS: int = 48  # 이메일 토큰 만료 시간 (시간 단위)
+
+    GOOGLE_CLIENT_ID: str = "your-google-client-id"
+    GOOGLE_CLIENT_SECRET: str = "your-google-client-secret"
+
+    OKTA_CLIENT_ID: str = "your-okta-client-id"
+    OKTA_CLIENT_SECRET: str = "your-okta-client-secret"
+    OKTA_DOMAIN: str = "your-okta-domain"
+
+    KAKAO_CLIENT_ID: str = "your-kakao-client-id"
+    KAKAO_CLIENT_SECRET: str = "your-kakao-client-secret"
+
+    NAVER_CLIENT_ID: str = "your-naver-client-id"
+    NAVER_CLIENT_SECRET: str = "your-naver-client-secret"
 
     # API Settings
     CORS_ORIGINS: list[str] = Field(
@@ -85,6 +105,26 @@ class CommonSettings(BaseSettings):
                     origins.append(origin)
 
         return origins
+
+    # 메일링 설정 (Mailtrap)
+    SMTP_TLS: bool = True
+    SMTP_SSL: bool = False
+    SMTP_PORT: int = 587
+    SMTP_HOST: str = "your_smtp_host"
+    SMTP_USER: str = "your_smtp_user"
+    SMTP_PASSWORD: str | None = None
+    EMAILS_FROM_EMAIL: str = "your_email@example.com"
+    EMAILS_FROM_NAME: str = "Admin Name"
+
+    @model_validator(mode="after")
+    def _set_default_emails_from(self) -> Self:
+        if not self.EMAILS_FROM_NAME:
+            self.EMAILS_FROM_NAME = self.PROJECT_NAME
+        return self
+
+    @computed_field
+    def emails_enabled(self) -> bool:
+        return bool(self.SMTP_HOST == "your_smtp_host")
 
 
 # Global settings instance
