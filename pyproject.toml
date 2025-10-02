@@ -8,6 +8,7 @@ dependencies = [
     # 핵심 공통 의존성만 포함
     "pydantic>=2.5.0",
     "pydantic-settings>=2.1.0",
+    "pyjwt>=2.10.1",
 ]
 
 [project.optional-dependencies]
