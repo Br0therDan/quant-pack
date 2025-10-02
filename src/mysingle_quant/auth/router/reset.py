@@ -1,14 +1,11 @@
-from fastapi import APIRouter, Body, HTTPException, Request, status
+from fastapi import APIRouter, Body, Request, status
 from pydantic import EmailStr
 
 from ..exceptions import (
-    InvalidPasswordException,
-    InvalidResetPasswordToken,
     UserInactive,
     UserNotExists,
 )
 from ..user_manager import UserManager
-from .common import ErrorCode
 
 user_manager = UserManager()
 
@@ -47,24 +44,8 @@ def get_reset_password_router() -> APIRouter:
         token: str = Body(...),
         password: str = Body(...),
     ):
-        try:
-            await user_manager.reset_password(token, password, request)
-        except (
-            InvalidResetPasswordToken,
-            UserNotExists,
-            UserInactive,
-        ):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorCode.RESET_PASSWORD_BAD_TOKEN,
-            )
-        except InvalidPasswordException as e:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail={
-                    "code": ErrorCode.RESET_PASSWORD_INVALID_PASSWORD,
-                    "reason": e.reason,
-                },
-            )
+        # UserManager.reset_password에서 이미 적절한 예외를 발생시키므로
+        # 직접 전파하도록 수정
+        await user_manager.reset_password(token, password, request)
 
     return router

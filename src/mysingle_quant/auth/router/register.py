@@ -1,12 +1,7 @@
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, Request, status
 
-from ..exceptions import (
-    InvalidPasswordException,
-    UserAlreadyExists,
-)
 from ..schemas import UserCreate, UserResponse
 from ..user_manager import UserManager
-from .common import ErrorCode
 
 user_manager = UserManager()
 
@@ -24,22 +19,9 @@ def get_register_router() -> APIRouter:
         request: Request,
         obj_in: UserCreate,
     ):
-        try:
-            created_user = await user_manager.create(obj_in, request=request)
-        except UserAlreadyExists:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorCode.REGISTER_USER_ALREADY_EXISTS,
-            )
-        except InvalidPasswordException as e:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail={
-                    "code": ErrorCode.REGISTER_INVALID_PASSWORD,
-                    "reason": e.reason,
-                },
-            )
-
+        # UserManager.create에서 이미 적절한 예외를 발생시키므로
+        # 직접 전파하도록 수정
+        created_user = await user_manager.create(obj_in, request=request)
         return UserResponse.model_validate(created_user, from_attributes=True)
 
     return router

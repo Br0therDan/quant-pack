@@ -1,9 +1,10 @@
 """Health check utilities and endpoints."""
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Request, status
 
 from ...core.config import settings
 from ..deps import get_current_active_verified_user
+from ..exceptions import AuthenticationFailed, UserInactive, UserNotExists
 from ..jwt import generate_jwt
 from ..models import User
 from ..schemas.auth import LoginRequest, LoginResponse
@@ -30,16 +31,14 @@ def create_auth_router() -> APIRouter:
             username=login_data.username, password=login_data.password
         )
 
-        if user is None or not user.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid credentials or inactive user.",
-            )
+        if user is None:
+            raise UserNotExists(identifier=login_data.username)
+
+        if not user.is_active:
+            raise UserInactive(user_id=str(user.id))
+
         if not user.is_verified:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="User not verified.",
-            )
+            raise AuthenticationFailed("User not verified")
 
         token_data = {
             "sub": str(user.id),

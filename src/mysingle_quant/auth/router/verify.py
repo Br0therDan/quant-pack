@@ -1,15 +1,13 @@
-from exceptions import (
-    InvalidVerifyToken,
+from fastapi import APIRouter, Body, Request, status
+from pydantic import EmailStr
+
+from ..exceptions import (
     UserAlreadyVerified,
     UserInactive,
     UserNotExists,
 )
-from fastapi import APIRouter, Body, HTTPException, Request, status
-from pydantic import EmailStr
-
 from ..schemas import UserResponse
 from ..user_manager import UserManager
-from .common import ErrorCode
 
 user_manager = UserManager()
 
@@ -45,18 +43,9 @@ def get_verify_router():
         request: Request,
         token: str = Body(..., embed=True),
     ):
-        try:
-            user = await user_manager.verify(token, request)
-            return UserResponse.model_validate(user, from_attributes=True)
-        except (InvalidVerifyToken, UserNotExists):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorCode.VERIFY_USER_BAD_TOKEN,
-            )
-        except UserAlreadyVerified:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorCode.VERIFY_USER_ALREADY_VERIFIED,
-            )
+        # UserManager.verify에서 이미 적절한 예외를 발생시키므로
+        # 직접 전파하도록 수정
+        user = await user_manager.verify(token, request)
+        return UserResponse.model_validate(user, from_attributes=True)
 
     return router

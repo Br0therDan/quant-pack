@@ -1,14 +1,14 @@
 import jwt
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, Query, Request
 from httpx_oauth.integrations.fastapi import OAuth2AuthorizeCallback
 from httpx_oauth.oauth2 import BaseOAuth2, OAuth2Token
 
 from ..deps import get_current_active_user
+from ..exceptions import AuthenticationFailed, AuthorizationFailed
 from ..jwt import decode_jwt, generate_jwt
 from ..models import User
 from ..schemas import OAuth2AuthorizeResponse, UserResponse
 from ..user_manager import UserManager
-from .common import ErrorCode
 
 STATE_TOKEN_AUDIENCE = "fastapi-users:oauth-state"
 user_manager = UserManager()
@@ -82,18 +82,15 @@ def get_oauth_associate_router(
         )
 
         if account_email is None:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=ErrorCode.OAUTH_NOT_AVAILABLE_EMAIL,
-            )
+            raise AuthenticationFailed("OAuth provider did not provide email")
 
         try:
             state_data = decode_jwt(state, [STATE_TOKEN_AUDIENCE])
         except jwt.DecodeError:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
+            raise AuthenticationFailed("Invalid OAuth state token")
 
         if state_data["sub"] != str(user.id):
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
+            raise AuthorizationFailed("OAuth state user mismatch")
 
         user = await user_manager.oauth_associate_callback(
             user,

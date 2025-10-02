@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRoute
 
+from ..auth.exception_handlers import register_auth_exception_handlers
 from ..auth.router import auth_router, user_router
 from ..health import create_health_router
 from ..metrics import create_metrics_middleware
@@ -212,6 +213,10 @@ def create_fastapi_app(
     if config.enable_auth:
         app.include_router(auth_router)
         app.include_router(user_router)
-        logger.info(f"🔐 Auth routes added for {config.service_name}")
+        # Register auth exception handlers
+        register_auth_exception_handlers(app)
+        logger.info(
+            f"🔐 Auth routes and exception handlers added for {config.service_name}"
+        )
 
     return app

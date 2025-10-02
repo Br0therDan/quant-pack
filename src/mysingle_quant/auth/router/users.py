@@ -1,15 +1,13 @@
 from beanie import PydanticObjectId
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, Request, Response, status
 
 from ..deps import get_current_active_superuser, get_current_active_verified_user
 from ..exceptions import (
-    InvalidPasswordException,
-    UserAlreadyExists,
+    UserNotExists,
 )
 from ..models import User
 from ..schemas import UserResponse, UserUpdate
 from ..user_manager import UserManager
-from .common import ErrorCode
 
 user_manager = UserManager()
 
@@ -37,24 +35,12 @@ def get_users_router() -> APIRouter:
         obj_in: UserUpdate,
         current_user: User = Depends(get_current_active_verified_user),
     ):
-        try:
-            user = await user_manager.update(
-                obj_in, current_user, safe=True, request=request
-            )
-            return UserResponse.model_validate(user, from_attributes=True)
-        except InvalidPasswordException as e:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail={
-                    "code": ErrorCode.UPDATE_USER_INVALID_PASSWORD,
-                    "reason": e.reason,
-                },
-            )
-        except UserAlreadyExists:
-            raise HTTPException(
-                status.HTTP_400_BAD_REQUEST,
-                detail=ErrorCode.UPDATE_USER_EMAIL_ALREADY_EXISTS,
-            )
+        # UserManager.update에서 이미 적절한 예외를 발생시키므로
+        # 직접 전파하도록 수정
+        user = await user_manager.update(
+            obj_in, current_user, safe=True, request=request
+        )
+        return UserResponse.model_validate(user, from_attributes=True)
 
     @router.get(
         "/{id}",
@@ -64,7 +50,7 @@ def get_users_router() -> APIRouter:
     async def get_user(id: PydanticObjectId):
         user = await user_manager.get(id)
         if user is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+            raise UserNotExists(identifier=str(id), identifier_type="user")
         return UserResponse.model_validate(user)
 
     @router.patch(
@@ -77,27 +63,16 @@ def get_users_router() -> APIRouter:
         obj_in: UserUpdate,  # type: ignore
         request: Request,
     ):
-        try:
-            user = await user_manager.get(id)
-            if user is None:
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-            updated_user = await user_manager.update(
-                obj_in, user, safe=False, request=request
-            )
-            return UserResponse.model_validate(updated_user, from_attributes=True)
-        except InvalidPasswordException as e:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail={
-                    "code": ErrorCode.UPDATE_USER_INVALID_PASSWORD,
-                    "reason": e.reason,
-                },
-            )
-        except UserAlreadyExists:
-            raise HTTPException(
-                status.HTTP_400_BAD_REQUEST,
-                detail=ErrorCode.UPDATE_USER_EMAIL_ALREADY_EXISTS,
-            )
+        user = await user_manager.get(id)
+        if user is None:
+            raise UserNotExists(identifier=str(id), identifier_type="user")
+
+        # UserManager.update에서 이미 적절한 예외를 발생시키므로
+        # 직접 전파하도록 수정
+        updated_user = await user_manager.update(
+            obj_in, user, safe=False, request=request
+        )
+        return UserResponse.model_validate(updated_user, from_attributes=True)
 
     @router.delete(
         "/{id}",
@@ -111,7 +86,7 @@ def get_users_router() -> APIRouter:
     ):
         user = await user_manager.get(id)
         if user is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+            raise UserNotExists(identifier=str(id), identifier_type="user")
         await user_manager.delete(user, request=request)
         return None
 
