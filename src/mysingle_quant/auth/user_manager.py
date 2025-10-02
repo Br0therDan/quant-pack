@@ -708,6 +708,22 @@ class UserManager:
         """
         return  # pragma: no cover
 
+    async def on_after_logout(
+        self,
+        user: User,
+        request: Request | None = None,
+    ) -> None:
+        """
+        로그아웃 후 실행되는 로직.
+
+        *필요에 따라 이 메소드를 오버로드하여 사용자 정의 로직을 추가할 수 있습니다.*
+
+        :param user: 로그아웃하는 사용자
+        :param request: 선택적 FastAPI 요청
+        """
+        logger.info(f"User logged out: {user.email} (ID: {user.id})")
+        return  # pragma: no cover
+
     async def on_before_delete(
         self, user: User, request: Request | None = None
     ) -> None:
