@@ -1,4 +1,4 @@
-from pydantic import ConfigDict, EmailStr, Field
+from pydantic import EmailStr, Field
 
 from mysingle_quant.core.base import BaseDoc
 
@@ -14,7 +14,11 @@ class User(BaseDoc):
     is_verified: bool = False
     oauth_accounts: list["OAuthAccount"] = Field(default_factory=list)
 
-    model_config = ConfigDict(from_attributes=True)
+    class Settings:
+        """Beanie settings."""
+
+        name = "users"
+        indexes = ["email"]
 
 
 class OAuthAccount(BaseDoc):
@@ -27,4 +31,8 @@ class OAuthAccount(BaseDoc):
     expires_at: int | None = None
     refresh_token: str | None = None
 
-    model_config = ConfigDict(from_attributes=True)
+    class Settings:
+        """Beanie settings."""
+
+        name = "oauth_accounts"
+        indexes = ["account_email"]

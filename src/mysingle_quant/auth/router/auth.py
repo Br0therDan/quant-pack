@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Depends, Request, status
 
-from ...core.config import settings
+from ...core import get_logger, settings
 from ..deps import get_current_active_verified_user
 from ..exceptions import AuthenticationFailed, UserInactive, UserNotExists
 from ..jwt import generate_jwt
@@ -11,6 +11,7 @@ from ..schemas.auth import LoginRequest, LoginResponse
 from ..schemas.user import UserResponse
 from ..user_manager import UserManager
 
+logger = get_logger(__name__)
 access_token_expire_minutes = settings.ACCESS_TOKEN_EXPIRE_MINUTES
 user_manager = UserManager()
 
@@ -48,7 +49,11 @@ def create_auth_router() -> APIRouter:
         token = generate_jwt(
             token_data, lifetime_seconds=access_token_expire_minutes * 60
         )
-        user_info = UserResponse.model_validate(user, from_attributes=True)
+        logger.info(f"User {user.email} logged in.")
+        # User 객체를 dict로 변환하면서 ObjectId를 문자열로 변환
+        user_dict = user.model_dump()
+        user_dict["id"] = str(user.id)  # ObjectId를 문자열로 변환
+        user_info = UserResponse.model_validate(user_dict)
         response = LoginResponse(
             access_token=token, token_type="bearer", user_info=user_info.model_dump()
         )

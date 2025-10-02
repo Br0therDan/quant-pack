@@ -28,9 +28,7 @@ async def create_first_super_admin() -> None:
         logger.info(f"Creating Super Admin with email: {settings.SUPERUSER_EMAIL}")
 
         # 기존 Super Admin 사용자 확인 (이메일 기준)
-        existing_super_admin = await User.find_one(
-            User.email == settings.SUPERUSER_EMAIL
-        )
+        existing_super_admin = await User.find_one({"email": settings.SUPERUSER_EMAIL})
         if existing_super_admin:
             logger.info(
                 f"✅ Super Admin user already exists: {existing_super_admin.email}"

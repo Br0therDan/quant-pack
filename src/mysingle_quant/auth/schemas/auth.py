@@ -10,7 +10,7 @@ class LoginResponse(BaseModel):
     access_token: str
     refresh_token: str | None = None
     token_type: str = "bearer"
-    user_info: dict | None = None
+    user_info: dict
 
 
 class AccessToken(BaseModel):

@@ -1,16 +1,16 @@
-from beanie import PydanticObjectId
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class UserResponse(BaseModel):
     """Base User model."""
 
-    id: PydanticObjectId = Field(..., alias="_id")
+    id: str = Field(..., alias="_id")
     email: EmailStr
     full_name: str | None = None
     is_active: bool = True
     is_superuser: bool = False
     is_verified: bool = False
+    oauth_accounts: list["OAuthAccount"] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -36,7 +36,7 @@ class UserUpdate(BaseModel):
 class OAuthAccount(BaseModel):
     """Base OAuth account model."""
 
-    id: PydanticObjectId = Field(..., alias="_id")
+    id: str = Field(..., alias="_id")
     oauth_name: str
     access_token: str
     expires_at: int | None = None
@@ -45,9 +45,3 @@ class OAuthAccount(BaseModel):
     account_email: str
 
     model_config = ConfigDict(from_attributes=True)
-
-
-class OAuthAccountMixin(BaseModel):
-    """Adds OAuth accounts list to a User model."""
-
-    oauth_accounts: list[OAuthAccount] = []
