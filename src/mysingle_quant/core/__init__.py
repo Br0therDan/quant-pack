@@ -1,19 +1,18 @@
 from .app_factory import AppConfig, create_fastapi_app, create_lifespan
+from .base import (
+    BaseDoc,
+    BaseDocWithUserId,
+    BaseResponseSchema,
+    BaseTimeDoc,
+    BaseTimeDocWithUserId,
+)
 from .config import CommonSettings, get_settings, settings
-from .db import get_database_name, get_mongodb_url, init_mongo
-from .health import (
-    HealthStatus,
-    basic_health_check,
-    create_health_router,
-    database_health_check,
-    get_health_checker,
+from .db import (
+    get_database_name,
+    get_mongodb_url,
+    init_mongo,
 )
-from .metrics import (
-    MetricsCollector,
-    create_metrics_middleware,
-    create_metrics_router,
-    get_metrics_collector,
-)
+from .logging_config import get_logger, setup_logging
 
 __all__ = [
     "settings",
@@ -25,13 +24,11 @@ __all__ = [
     "init_mongo",
     "get_mongodb_url",
     "get_database_name",
-    "HealthStatus",
-    "get_health_checker",
-    "create_health_router",
-    "basic_health_check",
-    "database_health_check",
-    "MetricsCollector",
-    "get_metrics_collector",
-    "create_metrics_middleware",
-    "create_metrics_router",
+    "BaseDoc",
+    "BaseDocWithUserId",
+    "BaseTimeDoc",
+    "BaseTimeDocWithUserId",
+    "BaseResponseSchema",
+    "setup_logging",
+    "get_logger",
 ]

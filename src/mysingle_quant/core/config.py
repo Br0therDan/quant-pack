@@ -33,12 +33,21 @@ class CommonSettings(BaseSettings):
         default="demo", description="Alpha Vantage API Key"
     )
 
+    AUTH_API_VERSION: str = Field(default="v1", description="IAM API version")
+
     # Security Settings
     SECRET_KEY: str = Field(
         default="dev-secret-key-change-in-production", description="Secret key for JWT"
     )
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(
         default=30, description="Access token expiration in minutes"
+    )
+
+    RESET_TOKEN_EXPIRE_MINUTES: int = Field(
+        default=60, description="Reset password token expiration in minutes"
+    )
+    VERIFY_TOKEN_EXPIRE_MINUTES: int = Field(
+        default=60, description="Verify user token expiration in minutes"
     )
     ALGORITHM: str = Field(default="HS256", description="JWT algorithm")
 

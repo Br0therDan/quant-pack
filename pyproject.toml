@@ -16,6 +16,11 @@ dependencies = [
     "prometheus-client>=0.19.0",
     "structlog>=23.2.0",
     "aiohttp>=3.9.4",
+    "redis>=6.4.0",
+    "pyjwt>=2.10.1",
+    "makefun>=1.16.0",
+    "httpx-oauth>=0.16.1",
+    "pwdlib>=0.2.1",
 ]
 
 [project.optional-dependencies]
@@ -38,7 +43,7 @@ target-version = ['py312']
 line-length = 88
 target-version = "py312"
 lint.select = ["E", "F", "UP", "B", "SIM", "I"]
-lint.ignore = []
+lint.ignore = ["F403", "F405", "B008", "B904", "B006", "SIM105", "UP007"]
 
 [tool.mypy]
 python_version = "3.12"

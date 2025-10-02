@@ -1,0 +1,659 @@
+import uuid
+from typing import Any, TypeVar
+
+import exceptions
+import jwt
+from beanie import PydanticObjectId
+from fastapi import Request, Response
+from pydantic import BaseModel
+
+from mysingle_quant.auth.models import OAuthAccount, User
+from mysingle_quant.auth.schemas.user import UserCreate, UserUpdate
+from mysingle_quant.auth.types import DependencyCallable
+from mysingle_quant.core.config import settings
+
+from .jwt import decode_jwt, generate_jwt
+from .password_helper import PasswordHelper, PasswordHelperProtocol
+
+RESET_PASSWORD_TOKEN_AUDIENCE = "fastapi-users:reset"
+VERIFY_USER_TOKEN_AUDIENCE = "fastapi-users:verify"
+SCHEMA = TypeVar("SCHEMA", bound=BaseModel)
+
+
+class UserManager:
+    """
+    사용자 관리 로직.
+
+    :attribute reset_password_token_secret: 비밀번호 재설정 토큰을
+        인코딩하는 데 사용되는 비밀 키.
+    :attribute reset_password_token_lifetime_seconds: 비밀번호 재설정
+        토큰의 유효 기간(초).
+    :attribute reset_password_token_audience: 비밀번호 재설정 토큰의 JWT 대상(audience).
+    :attribute verification_token_secret: 인증 토큰을 인코딩하는 데 사용되는 비밀 키.
+    :attribute verification_token_lifetime_seconds: 인증 토큰의 유효 기간.
+    :attribute verification_token_audience: 인증 토큰의 JWT 대상.
+
+    :param user_db: 데이터베이스 어댑터 인스턴스.
+    """
+
+    reset_password_token_lifetime_seconds: int = (
+        settings.RESET_TOKEN_EXPIRE_MINUTES * 60
+    )
+    reset_password_token_audience: str = RESET_PASSWORD_TOKEN_AUDIENCE
+
+    verification_token_lifetime_seconds: int = settings.VERIFY_TOKEN_EXPIRE_MINUTES * 60
+    verification_token_audience: str = VERIFY_USER_TOKEN_AUDIENCE
+
+    password_helper: PasswordHelperProtocol
+
+    def __init__(
+        self,
+        password_helper: PasswordHelperProtocol | None = None,
+    ):
+        if password_helper is None:
+            self.password_helper = PasswordHelper()
+        else:
+            self.password_helper = password_helper
+
+    def parse_id(self, value: Any) -> PydanticObjectId:
+        """
+        Parse a value into a correct PydanticObjectId instance.
+
+        :param value: The value to parse.
+        :raises InvalidID: The PydanticObjectId value is invalid.
+        :return: An PydanticObjectId object.
+        """
+        raise NotImplementedError()
+
+    @staticmethod
+    def model_dump(model: BaseModel, *args, **kwargs) -> dict[str, Any]:
+        return model.model_dump(*args, **kwargs)
+
+    @staticmethod
+    def model_validate(schema: type[BaseModel], obj: Any, *args, **kwargs) -> BaseModel:
+        return schema.model_validate(obj, *args, **kwargs)
+
+    async def get(self, id: PydanticObjectId) -> User:
+        """
+        ID로 사용자를 조회합니다.
+
+        :param id: 조회할 사용자의 ID.
+        :raises UserNotExists: 해당 사용자가 존재하지 않습니다.
+        :return: 사용자 객체.
+        """
+        user = await User.get(id)
+
+        if user is None:
+            raise exceptions.UserNotExists()
+
+        return user
+
+    async def get_by_email(self, user_email: str) -> User:
+        """
+        이메일로 사용자를 조회합니다.
+
+        :param user_email: 조회할 사용자의 이메일 주소.
+        :raises UserNotExists: 해당 사용자가 존재하지 않습니다.
+        :return: 사용자 객체.
+        """
+        user = await User.find_one({"email": user_email})
+
+        if user is None:
+            raise exceptions.UserNotExists()
+
+        return user
+
+    async def get_by_oauth_account(self, oauth: str, account_id: str) -> User:
+        """
+        OAuth 계정으로 사용자 가져오기.
+
+        :param oauth: OAuth 클라이언트 이름.
+        :param account_id: 외부 OAuth 서비스의 계정 ID.
+        :raises UserNotExists: 사용자가 존재하지 않습니다.
+        :return: 사용자 객체.
+        """
+        user = await User.find_one(
+            {
+                "oauth_accounts.oauth_name": oauth,
+                "oauth_accounts.account_id": account_id,
+            }
+        )
+
+        if user is None:
+            raise exceptions.UserNotExists()
+
+        return user
+
+    async def add_oauth_account(
+        self, user: User, oauth_account_dict: dict[str, Any]
+    ) -> User:
+        """
+        사용자에게 OAuth 계정 추가.
+
+        :param user: OAuth 계정을 추가할 사용자.
+        :param oauth_account_dict: 추가할 OAuth 계정의 세부 정보.
+        :return: 업데이트된 사용자 객체.
+        """
+        oauth_account = OAuthAccount(**oauth_account_dict)
+        user.oauth_accounts.append(oauth_account)
+        await user.save()
+        return user
+
+    async def update_oauth_account(
+        self,
+        user: User,
+        existing_oauth_account: OAuthAccount,
+        oauth_account_dict: dict[str, Any],
+    ) -> User:
+        """
+        사용자 OAuth 계정 업데이트.
+
+        :param user: OAuth 계정을 업데이트할 사용자.
+        :param existing_oauth_account: 업데이트할 기존 OAuth 계정.
+        :param oauth_account_dict: 업데이트할 OAuth 계정의 새 세부 정보.
+        :return: 업데이트된 사용자 객체.
+        """
+        existing_oauth_account.access_token = oauth_account_dict.get(
+            "access_token", existing_oauth_account.access_token
+        )
+        existing_oauth_account.expires_at = oauth_account_dict.get(
+            "expires_at", existing_oauth_account.expires_at
+        )
+        existing_oauth_account.refresh_token = oauth_account_dict.get(
+            "refresh_token", existing_oauth_account.refresh_token
+        )
+        await user.save()
+        return user
+
+    async def create(
+        self,
+        obj_in: UserCreate,
+        request: Request | None = None,
+    ) -> User:
+        """
+        데이터베이스에 사용자를 생성합니다.
+
+        성공 시 on_after_register 핸들러를 트리거합니다.
+
+        :param user_create: 생성할 UserCreate 모델입니다.
+        :param safe: True인 경우 is_superuser 또는 is_verified와 같은 민감한 값이
+        생성 과정에서 무시됩니다. 기본값은 False입니다.
+        :param request: 작업을 트리거한 선택적 FastAPI 요청입니다.
+        기본값은 None입니다.
+        :raises UserAlreadyExists: 동일한 이메일로 이미 사용자가 존재할 경우 발생합니다.
+        :return: 새로 생성된 사용자입니다.
+        """
+        await self.validate_password(obj_in.password, obj_in)
+
+        existing_user = await User.find_one({"email": obj_in.email})
+        if existing_user is not None:
+            raise exceptions.UserAlreadyExists()
+
+        user_dict = User(
+            email=obj_in.email,
+            full_name=obj_in.full_name,
+            hashed_password=self.password_helper.hash(obj_in.password),
+        )
+        # Remove password if exists (keeping for safety)
+        # password = user_dict.pop("password")
+
+        created_user = await User.create(user_dict)
+
+        await self.on_after_register(created_user, request)
+
+        return created_user
+
+    async def oauth_associate_callback(
+        self,
+        user: User,
+        oauth_name: str,
+        access_token: str,
+        account_id: str,
+        account_email: str,
+        expires_at: int | None = None,
+        refresh_token: str | None = None,
+        request: Request | None = None,
+    ) -> User:
+        """
+        OAuth 연결 성공 후 콜백 처리.
+
+        지정된 사용자에게 이 새로운 OAuth 계정을 추가합니다.
+
+        :param oauth_name: OAuth 클라이언트 이름.
+        :param access_token: 서비스 공급자에 대한 유효한 액세스 토큰.
+        :param account_id: 서비스 공급자 내 사용자의 models.ID.
+        :param account_email: 서비스 공급자 측 사용자의 이메일.
+        :param expires_at: 액세스 토큰이 만료되는 선택적 타임스탬프.
+        :param refresh_token: 서비스 공급자로부터 새로운 액세스
+            토큰을 얻기 위한 선택적 리프레시 토큰.
+        :param request: 작업을 트리거한 선택적 FastAPI 요청, 기본값은 None
+        :return: 사용자 객체.
+        """
+        oauth_account_dict = {
+            "oauth_name": oauth_name,
+            "access_token": access_token,
+            "account_id": account_id,
+            "account_email": account_email,
+            "expires_at": expires_at,
+            "refresh_token": refresh_token,
+        }
+
+        user = await self.add_oauth_account(user, oauth_account_dict)
+
+        await self.on_after_update(user, {}, request)
+
+        return user
+
+    async def request_verify(self, user: User, request: Request | None = None) -> None:
+        """
+        인증 요청을 시작합니다.
+
+        성공 시 on_after_request_verify 핸들러를 트리거합니다.
+
+        :param user: 인증할 사용자.
+        :param request: 작업을 트리거한 선택적 FastAPI 요청, 기본값은 None입니다.
+        :raises UserInactive: 사용자가 비활성 상태입니다.
+        :raises UserAlreadyVerified: 사용자가 이미 인증되었습니다.
+        """
+        if not user.is_active:
+            raise exceptions.UserInactive()
+        if user.is_verified:
+            raise exceptions.UserAlreadyVerified()
+
+        token_data = {
+            "sub": str(user.id),
+            "email": user.email,
+            "aud": self.verification_token_audience,
+        }
+        token = generate_jwt(
+            token_data,
+            lifetime_seconds=self.verification_token_lifetime_seconds,
+        )
+        await self.on_after_request_verify(user, token, request)
+
+    async def verify(self, token: str, request: Request | None = None) -> User:
+        """
+        인증 요청을 검증합니다.
+
+        사용자의 is_verified 플래그를 True로 변경합니다.
+
+        성공 시 on_after_verify 핸들러를 트리거합니다.
+
+        :param token: request_verify로 생성된 인증 토큰.
+        :param request: 작업을 트리거한 선택적 FastAPI 요청, 기본값은 None.
+        :raises InvalidVerifyToken: 토큰이 유효하지 않거나 만료됨.
+        :raises UserAlreadyVerified: 사용자가 이미 인증됨.
+        :return: 인증된 사용자.
+        """
+        try:
+            data = decode_jwt(
+                token,
+                [self.verification_token_audience],
+            )
+        except jwt.PyJWTError:
+            raise exceptions.InvalidVerifyToken()
+
+        try:
+            user_id = data["sub"]
+            email = data["email"]
+        except KeyError:
+            raise exceptions.InvalidVerifyToken()
+
+        try:
+            user = await self.get_by_email(email)
+        except exceptions.UserNotExists:
+            raise exceptions.InvalidVerifyToken()
+
+        try:
+            parsed_id = self.parse_id(user_id)
+        except exceptions.InvalidID:
+            raise exceptions.InvalidVerifyToken()
+
+        if parsed_id != user.id:
+            raise exceptions.InvalidVerifyToken()
+
+        if user.is_verified:
+            raise exceptions.UserAlreadyVerified()
+
+        verified_user = await self._update(user, {"is_verified": True})
+
+        await self.on_after_verify(verified_user, request)
+
+        return verified_user
+
+    async def forgot_password(self, user: User, request: Request | None = None) -> None:
+        """
+        비밀번호 찾기 요청을 시작합니다.
+
+        성공 시 on_after_forgot_password 핸들러를 트리거합니다.
+
+        :param user: 비밀번호를 분실한 사용자입니다.
+        :param request: 작업을 트리거한 선택적 FastAPI 요청입니다.
+        기본값은 None입니다.
+        :raises UserInactive: 사용자가 비활성 상태입니다.
+        """
+        if not user.is_active:
+            raise exceptions.UserInactive()
+
+        token_data = {
+            "sub": str(user.id),
+            "password_fgpt": self.password_helper.hash(user.hashed_password),
+            "aud": self.reset_password_token_audience,
+        }
+        token = generate_jwt(
+            token_data,
+            lifetime_seconds=self.reset_password_token_lifetime_seconds,
+        )
+        await self.on_after_forgot_password(user, token, request)
+
+    async def reset_password(
+        self, token: str, password: str, request: Request | None = None
+    ) -> User:
+        """
+        사용자의 비밀번호를 재설정합니다.
+
+        성공 시 on_after_reset_password 핸들러를 트리거합니다.
+
+        :param token: forgot_password에서 생성된 토큰입니다.
+        :param password: 설정할 새 비밀번호입니다.
+        :param request: 작업을 트리거한 선택적 FastAPI 요청, 기본값은 None입니다.
+        :raises InvalidResetPasswordToken: 토큰이 유효하지 않거나 만료되었습니다.
+        :raises UserInactive: 사용자가 비활성 상태입니다.
+        :raises InvalidPasswordException: 비밀번호가 유효하지 않습니다.
+        :return: 비밀번호가 업데이트된 사용자.
+        """
+        try:
+            data = decode_jwt(
+                token,
+                [self.reset_password_token_audience],
+            )
+        except jwt.PyJWTError:
+            raise exceptions.InvalidResetPasswordToken()
+
+        try:
+            user_id = data["sub"]
+            password_fingerprint = data["password_fgpt"]
+        except KeyError:
+            raise exceptions.InvalidResetPasswordToken()
+
+        try:
+            parsed_id = self.parse_id(user_id)
+        except exceptions.InvalidID:
+            raise exceptions.InvalidResetPasswordToken()
+
+        user = await self.get(parsed_id)
+
+        valid_password_fingerprint, _ = self.password_helper.verify_and_update(
+            user.hashed_password, password_fingerprint
+        )
+        if not valid_password_fingerprint:
+            raise exceptions.InvalidResetPasswordToken()
+
+        if not user.is_active:
+            raise exceptions.UserInactive()
+
+        updated_user = await self._update(user, {"password": password})
+
+        await self.on_after_reset_password(user, request)
+
+        return updated_user
+
+    async def update(
+        self,
+        obj_in: UserUpdate,
+        user: User,
+        safe: bool = False,
+        request: Request | None = None,
+    ) -> User:
+        """
+        사용자 업데이트.
+
+        성공 시 on_after_update 핸들러를 트리거합니다.
+
+        :param obj_in: 사용자에게 적용할 변경 사항을 포함하는
+        UserUpdate 모델.
+        :param user: 업데이트할 현재 사용자.
+        :param safe: True인 경우 is_superuser 또는 is_verified와 같은 민감한 값이
+        업데이트 중 무시됩니다. 기본값은 False입니다.
+        :param request: 작업을 트리거한 선택적 FastAPI 요청입니다.
+        기본값은 None입니다.
+        :return: 업데이트된 사용자.
+        """
+        updated_user = await self._update(
+            user, self.model_dump(obj_in, exclude_unset=True)
+        )
+        await self.on_after_update(
+            updated_user, self.model_dump(updated_user, exclude_unset=True), request
+        )
+        return updated_user
+
+    async def delete(
+        self,
+        user: User,
+        request: Request | None = None,
+    ) -> None:
+        """
+        Delete a user.
+
+        :param user: The user to delete.
+        :param request: Optional FastAPI request that
+        triggered the operation, defaults to None.
+        """
+        await self.on_before_delete(user, request)
+        await self.delete(user)
+        await self.on_after_delete(user, request)
+
+    async def validate_password(self, password: str, user: UserCreate | User) -> None:
+        """
+        Validate a password.
+
+        *You should overload this method to add your own validation logic.*
+
+        :param password: The password to validate.
+        :param user: The user associated to this password.
+        :raises InvalidPasswordException: The password is invalid.
+        :return: None if the password is valid.
+        """
+
+        return  # pragma: no cover
+
+    async def on_after_register(
+        self, user: User, request: Request | None = None
+    ) -> None:
+        """
+        Perform logic after successful user registration.
+
+        *You should overload this method to add your own logic.*
+
+        :param user: The registered user
+        :param request: Optional FastAPI request that
+        triggered the operation, defaults to None.
+        """
+        return  # pragma: no cover
+
+    async def on_after_update(
+        self,
+        user: User,
+        update_dict: dict[str, Any],
+        request: Request | None = None,
+    ) -> None:
+        """
+        Perform logic after successful user update.
+
+        *You should overload this method to add your own logic.*
+
+        :param user: The updated user
+        :param update_dict: Dictionary with the updated user fields.
+        :param request: Optional FastAPI request that
+        triggered the operation, defaults to None.
+        """
+        return  # pragma: no cover
+
+    async def on_after_request_verify(
+        self, user: User, token: str, request: Request | None = None
+    ) -> None:
+        """
+        Perform logic after successful verification request.
+
+        *You should overload this method to add your own logic.*
+
+        :param user: The user to verify.
+        :param token: The verification token.
+        :param request: Optional FastAPI request that
+        triggered the operation, defaults to None.
+        """
+        return  # pragma: no cover
+
+    async def on_after_verify(self, user: User, request: Request | None = None) -> None:
+        """
+        Perform logic after successful user verification.
+
+        *You should overload this method to add your own logic.*
+
+        :param user: The verified user.
+        :param request: Optional FastAPI request that
+        triggered the operation, defaults to None.
+        """
+        return  # pragma: no cover
+
+    async def on_after_forgot_password(
+        self, user: User, token: str, request: Request | None = None
+    ) -> None:
+        """
+        Perform logic after successful forgot password request.
+
+        *You should overload this method to add your own logic.*
+
+        :param user: The user that forgot its password.
+        :param token: The forgot password token.
+        :param request: Optional FastAPI request that
+        triggered the operation, defaults to None.
+        """
+        return  # pragma: no cover
+
+    async def on_after_reset_password(
+        self, user: User, request: Request | None = None
+    ) -> None:
+        """
+        Perform logic after successful password reset.
+
+        *You should overload this method to add your own logic.*
+
+        :param user: The user that reset its password.
+        :param request: Optional FastAPI request that
+        triggered the operation, defaults to None.
+        """
+        return  # pragma: no cover
+
+    async def on_after_login(
+        self,
+        user: User,
+        request: Request | None = None,
+        response: Response | None = None,
+    ) -> None:
+        """
+        Perform logic after user login.
+
+        *You should overload this method to add your own logic.*
+
+        :param user: The user that is logging in
+        :param request: Optional FastAPI request
+        :param response: Optional response built by the transport.
+        Defaults to None
+        """
+        return  # pragma: no cover
+
+    async def on_before_delete(
+        self, user: User, request: Request | None = None
+    ) -> None:
+        """
+        Perform logic before user delete.
+
+        *You should overload this method to add your own logic.*
+
+        :param user: The user to be deleted
+        :param request: Optional FastAPI request that
+        triggered the operation, defaults to None.
+        """
+        return  # pragma: no cover
+
+    async def on_after_delete(self, user: User, request: Request | None = None) -> None:
+        """
+        Perform logic before user delete.
+
+        *You should overload this method to add your own logic.*
+
+        :param user: The user to be deleted
+        :param request: Optional FastAPI request that
+        triggered the operation, defaults to None.
+        """
+        return  # pragma: no cover
+
+    async def authenticate(self, username: str, password: str) -> User | None:
+        """
+        Authenticate and return a user following an email and a password.
+
+        Will automatically upgrade password hash if necessary.
+
+        :param credentials: The user credentials.
+        """
+        try:
+            user = await self.get_by_email(username)
+        except exceptions.UserNotExists:
+            # Run the hasher to mitigate timing attack
+            # Inspired from Django: https://code.djangoproject.com/ticket/20760
+            self.password_helper.hash(password)
+            return None
+
+        verified, updated_password_hash = self.password_helper.verify_and_update(
+            password, user.hashed_password
+        )
+        if not verified:
+            return None
+        # Update password hash to a more robust one if needed
+        if updated_password_hash is not None:
+            await self._update(user, {"hashed_password": updated_password_hash})
+
+        return user
+
+    async def _update(self, user: User, update_dict: dict[str, Any]) -> User:
+        validated_update_dict = {}
+        for field, value in update_dict.items():
+            if field == "email" and value != user.email:
+                try:
+                    await self.get_by_email(value)
+                    raise exceptions.UserAlreadyExists()
+                except exceptions.UserNotExists:
+                    validated_update_dict["email"] = value
+                    validated_update_dict["is_verified"] = False
+            elif field == "password" and value is not None:
+                await self.validate_password(value, user)
+                validated_update_dict["hashed_password"] = self.password_helper.hash(
+                    value
+                )
+            else:
+                validated_update_dict[field] = value
+        return await self._update(user, validated_update_dict)
+
+
+class UUIDIDMixin:
+    def parse_id(self, value: Any) -> uuid.UUID:
+        if isinstance(value, uuid.UUID):
+            return value
+        try:
+            return uuid.UUID(value)
+        except ValueError as e:
+            raise exceptions.InvalidID() from e
+
+
+class IntegerIDMixin:
+    def parse_id(self, value: Any) -> int:
+        if isinstance(value, float):
+            raise exceptions.InvalidID()
+        try:
+            return int(value)
+        except ValueError as e:
+            raise exceptions.InvalidID() from e
+
+
+UserManagerDependency = DependencyCallable[UserManager]

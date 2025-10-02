@@ -9,10 +9,15 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRoute
 
+from ..auth.router import auth_router, user_router
+from ..health import create_health_router
+from ..metrics import create_metrics_middleware
 from .config import settings
 from .db import init_mongo
-from .health import create_health_router
-from .metrics import create_metrics_middleware
+from .logging_config import get_logger, setup_logging
+
+setup_logging()
+logger = get_logger(__name__)
 
 
 def custom_generate_unique_id(route: APIRoute) -> str:
@@ -61,12 +66,12 @@ def create_lifespan(config: AppConfig) -> Callable:
                     config.service_name,
                 )
                 startup_tasks.append(("mongodb_client", client))
-                print(f"✅ Connected to MongoDB for {config.service_name}")
+                logger.info(f"✅ Connected to MongoDB for {config.service_name}")
             except Exception as e:
-                print(f"❌ Failed to connect to MongoDB: {e}")
+                logger.error(f"❌ Failed to connect to MongoDB: {e}")
                 if not settings.MOCK_DATABASE:
                     raise
-                print("🔄 Running with mock database")
+                logger.warning("🔄 Running with mock database")
 
         # Store startup tasks in app state
         app.state.startup_tasks = startup_tasks
@@ -83,9 +88,9 @@ def create_lifespan(config: AppConfig) -> Callable:
             if task_name == "mongodb_client":
                 try:
                     task_obj.close()
-                    print("✅ Disconnected from MongoDB")
+                    logger.info("✅ Disconnected from MongoDB")
                 except Exception as e:
-                    print(f"⚠️ Error disconnecting from MongoDB: {e}")
+                    logger.error(f"⚠️ Error disconnecting from MongoDB: {e}")
 
     return lifespan
 
@@ -180,21 +185,21 @@ def create_fastapi_app(
     # Add authentication middleware (if enabled and not in development)
     if config.enable_auth and not is_development:
         # TODO: Implement authentication middleware
-        print("🔐 Authentication middleware would be added here")
+        logger.info("🔐 Authentication middleware would be added here")
 
     # Add metrics middleware
     if config.enable_metrics:
         try:
-            from .metrics import MetricsMiddleware, get_metrics_collector
+            from ..metrics import MetricsMiddleware, get_metrics_collector
 
             # Initialize metrics collector first
             create_metrics_middleware(config.service_name)
             # Add middleware with collector
             collector = get_metrics_collector()
             app.add_middleware(MetricsMiddleware, collector=collector)
-            print(f"📊 Metrics middleware enabled for {config.service_name}")
+            logger.info(f"📊 Metrics middleware enabled for {config.service_name}")
         except Exception as e:
-            print(f"⚠️ Failed to add metrics middleware: {e}")
+            logger.error(f"⚠️ Failed to add metrics middleware: {e}")
 
     # Add health check endpoints
     if config.enable_health_check:
@@ -202,6 +207,11 @@ def create_fastapi_app(
             config.service_name, config.service_version
         )
         app.include_router(health_router)
-        print(f"❤️ Health check endpoints added for {config.service_name}")
+        logger.info(f"❤️ Health check endpoints added for {config.service_name}")
+
+    if config.enable_auth:
+        app.include_router(auth_router)
+        app.include_router(user_router)
+        logger.info(f"🔐 Auth routes added for {config.service_name}")
 
     return app
