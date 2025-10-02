@@ -61,8 +61,6 @@ def create_lifespan(config: AppConfig) -> Callable:
         # Startup
         startup_tasks = []
 
-        await create_first_super_admin()
-
         # Initialize database if enabled
         if config.enable_database and config.document_models:
             if config.enable_auth:
@@ -78,6 +76,10 @@ def create_lifespan(config: AppConfig) -> Callable:
                 )
                 startup_tasks.append(("mongodb_client", client))
                 logger.info(f"✅ Connected to MongoDB for {config.service_name}")
+
+                # Create first super admin after database initialization
+                await create_first_super_admin()
+
             except Exception as e:
                 logger.error(f"❌ Failed to connect to MongoDB: {e}")
                 if not settings.MOCK_DATABASE:

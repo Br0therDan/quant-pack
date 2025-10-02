@@ -2,7 +2,8 @@
 
 from fastapi import APIRouter, Depends, Request, status
 
-from ...core import get_logger, settings
+from ...core.config import settings
+from ...core.logging_config import get_logger
 from ..deps import get_current_active_verified_user
 from ..exceptions import AuthenticationFailed, UserInactive, UserNotExists
 from ..jwt import generate_jwt
