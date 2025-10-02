@@ -215,7 +215,7 @@ def create_fastapi_app(
 
     if config.enable_auth:
         app.include_router(auth_router)
-        app.include_router(user_router)
+        app.include_router(user_router, prefix="/users", tags=["Users"])
         # Register auth exception handlers
         register_auth_exception_handlers(app)
         logger.info(
