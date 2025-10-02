@@ -214,8 +214,12 @@ def create_fastapi_app(
         logger.info(f"❤️ Health check endpoints added for {config.service_name}")
 
     if config.enable_auth:
-        app.include_router(auth_router)
-        app.include_router(user_router, prefix="/users", tags=["Users"])
+        app.include_router(
+            auth_router, prefix=f"/api/{settings.AUTH_API_VERSION}/auth", tags=["auth"]
+        )
+        app.include_router(
+            user_router, prefix=f"/api/{settings.AUTH_API_VERSION}/users", tags=["User"]
+        )
         # Register auth exception handlers
         register_auth_exception_handlers(app)
         logger.info(

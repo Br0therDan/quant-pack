@@ -14,7 +14,7 @@ register_router = get_register_router()
 reset_password_router = get_reset_password_router()
 verify_router = get_verify_router()
 
-auth_router = APIRouter(prefix="/auth", tags=["auth"])
+auth_router = APIRouter()
 
 auth_router.include_router(auth_router)
 auth_router.include_router(register_router)
