@@ -1,7 +1,6 @@
 import uuid
 from typing import Any, TypeVar
 
-import exceptions
 import jwt
 from beanie import PydanticObjectId
 from fastapi import Request, Response
@@ -14,6 +13,15 @@ from ..core.config import settings
 from ..core.logging_config import get_logger
 from ..email.email_gen import generate_reset_password_email, generate_verification_email
 from ..email.email_sending import send_email
+from .exceptions import (
+    InvalidID,
+    InvalidResetPasswordToken,
+    InvalidVerifyToken,
+    UserAlreadyExists,
+    UserAlreadyVerified,
+    UserInactive,
+    UserNotExists,
+)
 from .jwt import decode_jwt, generate_jwt
 from .password_helper import PasswordHelper, PasswordHelperProtocol
 
@@ -90,7 +98,7 @@ class UserManager:
         user = await User.get(id)
 
         if user is None:
-            raise exceptions.UserNotExists()
+            raise UserNotExists()
 
         return user
 
@@ -105,7 +113,7 @@ class UserManager:
         user = await User.find_one({"email": user_email})
 
         if user is None:
-            raise exceptions.UserNotExists()
+            raise UserNotExists()
 
         return user
 
@@ -126,7 +134,7 @@ class UserManager:
         )
 
         if user is None:
-            raise exceptions.UserNotExists()
+            raise UserNotExists()
 
         return user
 
@@ -163,7 +171,7 @@ class UserManager:
         """
         oauth_account = self.find_oauth_account(user, oauth_name, account_id)
         if oauth_account is None:
-            raise exceptions.UserNotExists(
+            raise UserNotExists(
                 identifier=f"{oauth_name}:{account_id}", identifier_type="OAuth account"
             )
 
@@ -234,7 +242,7 @@ class UserManager:
 
         existing_user = await User.find_one({"email": obj_in.email})
         if existing_user is not None:
-            raise exceptions.UserAlreadyExists()
+            raise UserAlreadyExists()
 
         user_dict = User(
             email=obj_in.email,
@@ -319,9 +327,9 @@ class UserManager:
         :raises UserAlreadyVerified: 사용자가 이미 인증되었습니다.
         """
         if not user.is_active:
-            raise exceptions.UserInactive()
+            raise UserInactive()
         if user.is_verified:
-            raise exceptions.UserAlreadyVerified()
+            raise UserAlreadyVerified()
 
         token_data = {
             "sub": str(user.id),
@@ -354,29 +362,29 @@ class UserManager:
                 [self.verification_token_audience],
             )
         except jwt.PyJWTError:
-            raise exceptions.InvalidVerifyToken()
+            raise InvalidVerifyToken()
 
         try:
             user_id = data["sub"]
             email = data["email"]
         except KeyError:
-            raise exceptions.InvalidVerifyToken()
+            raise InvalidVerifyToken()
 
         try:
             user = await self.get_by_email(email)
-        except exceptions.UserNotExists:
-            raise exceptions.InvalidVerifyToken()
+        except UserNotExists:
+            raise InvalidVerifyToken()
 
         try:
             parsed_id = self.parse_id(user_id)
-        except exceptions.InvalidID:
-            raise exceptions.InvalidVerifyToken()
+        except InvalidID:
+            raise InvalidVerifyToken()
 
         if parsed_id != user.id:
-            raise exceptions.InvalidVerifyToken()
+            raise InvalidVerifyToken()
 
         if user.is_verified:
-            raise exceptions.UserAlreadyVerified()
+            raise UserAlreadyVerified()
 
         verified_user = await self._update(user, {"is_verified": True})
 
@@ -396,7 +404,7 @@ class UserManager:
         :raises UserInactive: 사용자가 비활성 상태입니다.
         """
         if not user.is_active:
-            raise exceptions.UserInactive()
+            raise UserInactive()
 
         token_data = {
             "sub": str(user.id),
@@ -431,18 +439,18 @@ class UserManager:
                 [self.reset_password_token_audience],
             )
         except jwt.PyJWTError:
-            raise exceptions.InvalidResetPasswordToken()
+            raise InvalidResetPasswordToken()
 
         try:
             user_id = data["sub"]
             password_fingerprint = data["password_fgpt"]
         except KeyError:
-            raise exceptions.InvalidResetPasswordToken()
+            raise InvalidResetPasswordToken()
 
         try:
             parsed_id = self.parse_id(user_id)
-        except exceptions.InvalidID:
-            raise exceptions.InvalidResetPasswordToken()
+        except InvalidID:
+            raise InvalidResetPasswordToken()
 
         user = await self.get(parsed_id)
 
@@ -450,10 +458,10 @@ class UserManager:
             user.hashed_password, password_fingerprint
         )
         if not valid_password_fingerprint:
-            raise exceptions.InvalidResetPasswordToken()
+            raise InvalidResetPasswordToken()
 
         if not user.is_active:
-            raise exceptions.UserInactive()
+            raise UserInactive()
 
         updated_user = await self._update(user, {"password": password})
 
@@ -714,7 +722,7 @@ class UserManager:
         """
         try:
             user = await self.get_by_email(username)
-        except exceptions.UserNotExists:
+        except UserNotExists:
             # Run the hasher to mitigate timing attack
             # Inspired from Django: https://code.djangoproject.com/ticket/20760
             self.password_helper.hash(password)
@@ -737,8 +745,8 @@ class UserManager:
             if field == "email" and value != user.email:
                 try:
                     await self.get_by_email(value)
-                    raise exceptions.UserAlreadyExists()
-                except exceptions.UserNotExists:
+                    raise UserAlreadyExists()
+                except UserNotExists:
                     validated_update_dict["email"] = value
                     validated_update_dict["is_verified"] = False
             elif field == "password" and value is not None:
@@ -758,17 +766,17 @@ class UUIDIDMixin:
         try:
             return uuid.UUID(value)
         except ValueError as e:
-            raise exceptions.InvalidID() from e
+            raise InvalidID() from e
 
 
 class IntegerIDMixin:
     def parse_id(self, value: Any) -> int:
         if isinstance(value, float):
-            raise exceptions.InvalidID()
+            raise InvalidID()
         try:
             return int(value)
         except ValueError as e:
-            raise exceptions.InvalidID() from e
+            raise InvalidID() from e
 
 
 UserManagerDependency = DependencyCallable[UserManager]
