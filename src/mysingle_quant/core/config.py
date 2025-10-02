@@ -3,11 +3,18 @@
 from typing import Self
 
 from pydantic import Field, computed_field, model_validator
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class CommonSettings(BaseSettings):
     """Common settings for all microservices."""
+
+    model_config = SettingsConfigDict(
+        env_file="../.env",
+        env_file_encoding="utf-8",
+        case_sensitive=True,
+        extra="ignore",
+    )
 
     # Project Settings
     PROJECT_NAME: str = Field(default="Quant Platform", description="Project name")
