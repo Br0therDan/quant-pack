@@ -11,6 +11,7 @@ from fastapi.routing import APIRoute
 
 from ..auth.exception_handlers import register_auth_exception_handlers
 from ..auth.init_data import create_first_super_admin
+from ..auth.models import OAuthAccount, User
 from ..auth.router import auth_router, user_router
 from ..health import create_health_router
 from ..metrics import create_metrics_middleware
@@ -64,6 +65,12 @@ def create_lifespan(config: AppConfig) -> Callable:
 
         # Initialize database if enabled
         if config.enable_database and config.document_models:
+            if config.enable_auth:
+                # Ensure auth models are included
+                auth_models = [User, OAuthAccount]
+                for model in auth_models:
+                    if model not in config.document_models:
+                        config.document_models.append(model)
             try:
                 client = await init_mongo(
                     config.document_models,
