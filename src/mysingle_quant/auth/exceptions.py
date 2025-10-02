@@ -137,3 +137,12 @@ class JWTStrategyDestroyNotSupportedError(AuthException):
 
     def __init__(self):
         super().__init__("JWT tokens cannot be destroyed")
+
+
+class OAuth2Error(AuthException):
+    """OAuth2 관련 예외"""
+
+    def __init__(
+        self, message: str = "OAuth2 error occurred", details: Any | None = None
+    ):
+        super().__init__(message, details)

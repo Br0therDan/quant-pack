@@ -57,6 +57,9 @@ class CommonSettings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(
         default=30, description="Access token expiration in minutes"
     )
+    REFRESH_TOKEN_EXPIRE_DAYS: int = Field(
+        default=7, description="Refresh token expiration in days"
+    )
 
     RESET_TOKEN_EXPIRE_MINUTES: int = Field(
         default=60, description="Reset password token expiration in minutes"

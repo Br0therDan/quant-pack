@@ -22,8 +22,8 @@ from .exceptions import (
     UserInactive,
     UserNotExists,
 )
-from .jwt import decode_jwt, generate_jwt
 from .password_helper import PasswordHelper, PasswordHelperProtocol
+from .security import decode_jwt, generate_jwt
 
 logger = get_logger(__name__)
 

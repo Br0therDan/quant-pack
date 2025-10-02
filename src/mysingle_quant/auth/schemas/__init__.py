@@ -1,5 +1,4 @@
 from .auth import (
-    LoginRequest,
     LoginResponse,
     OAuth2AuthorizeResponse,
 )
@@ -10,7 +9,6 @@ from .user import (
 )
 
 __all__ = [
-    "LoginRequest",
     "LoginResponse",
     "OAuth2AuthorizeResponse",
     "UserResponse",

@@ -5,9 +5,9 @@ from httpx_oauth.oauth2 import BaseOAuth2, OAuth2Token
 
 from ..deps import get_current_active_user
 from ..exceptions import AuthenticationFailed, AuthorizationFailed
-from ..jwt import decode_jwt, generate_jwt
 from ..models import User
 from ..schemas import OAuth2AuthorizeResponse, UserResponse
+from ..security import decode_jwt, generate_jwt
 from ..user_manager import UserManager
 
 STATE_TOKEN_AUDIENCE = "fastapi-users:oauth-state"

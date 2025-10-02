@@ -3,16 +3,6 @@ from pydantic import BaseModel
 from .user import UserResponse
 
 
-class LoginRequest(BaseModel):
-    username: str
-    password: str
-
-    class Config:
-        json_schema_extra = {
-            "example": {"username": "user@example.com", "password": "string"}
-        }
-
-
 class LoginResponse(BaseModel):
     access_token: str
     refresh_token: str | None = None
@@ -46,3 +36,35 @@ class OAuth2AuthorizeResponse(BaseModel):
                 "authorization_url": "https://example.com/oauth/authorize?response_type=code&client_id=your_client_id&redirect_uri=your_redirect_uri&scope=your_scope"
             }
         }
+
+
+class Token(BaseModel):
+    access_token: str
+    refresh_token: str | None = None
+    token_type: str
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "access_token": "string",
+                "refresh_token": "string",
+                "token_type": "bearer",
+            }
+        }
+
+
+class AccessTokenData(BaseModel):
+    sub: str | None = None
+    email: str | None = None
+    exp: int | None = None
+    iat: int | None = None
+    aud: list[str] | None = None
+    type: str = "access"
+
+
+class RefreshTokenData(BaseModel):
+    sub: str | None = None
+    exp: int | None = None
+    iat: int | None = None
+    aud: list[str] | None = None
+    type: str = "refresh"

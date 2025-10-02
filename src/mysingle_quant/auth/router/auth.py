@@ -2,17 +2,18 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request, status
+from beanie import PydanticObjectId
+from fastapi import APIRouter, Depends, Header, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 
 from ...core.config import settings
 from ...core.logging_config import get_logger
 from ..deps import get_current_active_verified_user
 from ..exceptions import AuthenticationFailed, UserInactive, UserNotExists
-from ..jwt import generate_jwt
 from ..models import User
-from ..schemas.auth import LoginResponse
+from ..schemas.auth import AccessTokenData, LoginResponse, RefreshTokenData
 from ..schemas.user import UserResponse
+from ..security import create_auth_tokens, validate_token
 from ..user_manager import UserManager
 
 logger = get_logger(__name__)
@@ -45,16 +46,28 @@ def create_auth_router() -> APIRouter:
         if not user.is_verified:
             raise AuthenticationFailed("User not verified")
 
-        token_data = {
-            "sub": str(user.id),
-            "email": user.email,
-            "aud": ["fastapi-users"],
-        }
-        token = generate_jwt(
-            token_data, lifetime_seconds=access_token_expire_minutes * 60
+        access_token_data = AccessTokenData(
+            sub=str(user.id),
+            email=user.email,
+            exp=access_token_expire_minutes * 60,
+            iat=0,
+            aud=["quant-users"],  # TODO: audience 설정 옵션 추가 필요
         )
+        refresh_token_data = RefreshTokenData(
+            sub=str(user.id),
+            exp=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+            iat=0,
+            aud=["quant-users"],  # TODO: audience 설정 옵션 추가 필요
+        )
+
+        access_token, refresh_token = create_auth_tokens(
+            access_token_data=access_token_data,
+            refresh_token_data=refresh_token_data,
+        )
+
         response = LoginResponse(
-            access_token=token,
+            access_token=access_token,
+            refresh_token=refresh_token,
             token_type="bearer",
             user_info=UserResponse(**user.model_dump(by_alias=True)),
         )
@@ -76,5 +89,52 @@ def create_auth_router() -> APIRouter:
         # 로그아웃 후 처리 로직 실행
         await user_manager.on_after_logout(current_user, request)
         # HTTP 204는 응답 본문이 없어야 하므로 None 반환
+        return None
+
+    @router.post("/refresh", response_model=LoginResponse)
+    async def refresh_token(
+        request: Request,
+        refresh_token: str = Header(..., alias="X-Refresh-Token"),
+    ) -> LoginResponse:
+        """
+        JWT 토큰 갱신 엔드포인트.
+
+        현재는 Access Token과 Refresh Token을 모두 새로 발급합니다.
+        """
+        payload = validate_token(refresh_token)
+
+        if payload.get("aud") != ["quant-users"]:
+            raise AuthenticationFailed("Invalid token audience")
+        user_id = payload.get("sub")
+        user = await user_manager.get(PydanticObjectId(user_id))
+
+        access_token_data = AccessTokenData(
+            sub=str(user.id),
+            email=user.email,
+            exp=access_token_expire_minutes * 60,
+            iat=0,
+            aud=["quant-users"],  # TODO: audience 설정 옵션 추가 필요
+        )
+        refresh_token_data = RefreshTokenData(
+            sub=str(user.id),
+            exp=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+            iat=0,
+            aud=["quant-users"],  # TODO: audience 설정 옵션 추가 필요
+        )
+
+        access_token, refresh_token = create_auth_tokens(
+            access_token_data=access_token_data,
+            refresh_token_data=refresh_token_data,
+        )
+
+        response = LoginResponse(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            token_type="bearer",
+            user_info=UserResponse(**user.model_dump(by_alias=True)),
+        )
+
+        await user_manager.on_after_login(user, request)
+        return response
 
     return router
