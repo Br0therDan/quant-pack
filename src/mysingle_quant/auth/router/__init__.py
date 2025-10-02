@@ -7,22 +7,16 @@ from .reset import get_reset_password_router
 from .users import get_users_router
 from .verify import get_verify_router
 
-auth_router = create_auth_router()
-user_router = get_users_router()
-oauth_management_router = get_oauth_management_router()
-register_router = get_register_router()
-reset_password_router = get_reset_password_router()
-verify_router = get_verify_router()
-
 auth_router = APIRouter()
 
-auth_router.include_router(auth_router)
-auth_router.include_router(register_router)
-auth_router.include_router(reset_password_router)
-auth_router.include_router(verify_router)
+auth_router.include_router(create_auth_router())
+auth_router.include_router(get_register_router())
+auth_router.include_router(get_reset_password_router())
+auth_router.include_router(get_verify_router())
 
+user_router = APIRouter()
 
-__all__ = [
-    "auth_router",
-    "user_router",
-]
+user_router.include_router(get_users_router())
+user_router.include_router(get_oauth_management_router())
+
+__all__ = ["auth_router", "user_router"]

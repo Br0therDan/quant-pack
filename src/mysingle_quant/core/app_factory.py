@@ -215,7 +215,7 @@ def create_fastapi_app(
 
     if config.enable_auth:
         app.include_router(
-            auth_router, prefix=f"/api/{settings.AUTH_API_VERSION}/auth", tags=["auth"]
+            auth_router, prefix=f"/api/{settings.AUTH_API_VERSION}/auth", tags=["Auth"]
         )
         app.include_router(
             user_router, prefix=f"/api/{settings.AUTH_API_VERSION}/users", tags=["User"]
