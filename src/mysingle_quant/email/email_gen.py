@@ -80,3 +80,26 @@ def generate_new_account_email(
         },
     )
     return EmailData(html_content=html_content, subject=subject)
+
+
+def generate_password_reset_confirmation_email(
+    email_to: str, username: str, origin: str
+) -> EmailData:
+    """
+    비밀번호 재설정 완료 알림 이메일 생성
+    """
+    project_name = settings.PROJECT_NAME
+    subject = f"{project_name} - 비밀번호 변경 완료"
+
+    html_content = render_email_template(
+        template_name="password_reset_confirmation.html",
+        context={
+            "project_name": settings.PROJECT_NAME,
+            "frontend_url": settings.FRONTEND_URL,
+            "username": username,
+            "email": email_to,
+            "login_link": f"{origin}/auth/login",
+            "support_email": settings.EMAILS_FROM_EMAIL,
+        },
+    )
+    return EmailData(html_content=html_content, subject=subject)

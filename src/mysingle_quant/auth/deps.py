@@ -5,14 +5,13 @@ import logging
 from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
 
-from mysingle_quant.auth.jwt import read_token
-
 from ..core.config import settings
 from .exceptions import (
     AuthorizationFailed,
     UserInactive,
     UserNotExists,
 )
+from .jwt import read_token
 from .models import User
 
 logger = logging.getLogger(__name__)

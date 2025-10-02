@@ -4,10 +4,10 @@ from typing import Any, Union
 import jwt
 from pydantic import SecretStr
 
-from mysingle_quant.auth.exceptions import InvalidID, UserNotExists
-from mysingle_quant.auth.models import User
-from mysingle_quant.auth.user_manager import UserManager
-from mysingle_quant.core.config import settings
+from ..auth.exceptions import InvalidID, UserNotExists
+from ..auth.models import User
+from ..auth.user_manager import UserManager
+from ..core.config import settings
 
 SecretType = Union[str, SecretStr]
 ALGORITHM = settings.ALGORITHM

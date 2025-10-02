@@ -7,13 +7,17 @@ from beanie import PydanticObjectId
 from fastapi import Request, Response
 from pydantic import BaseModel
 
-from mysingle_quant.auth.models import OAuthAccount, User
-from mysingle_quant.auth.schemas.user import UserCreate, UserUpdate
-from mysingle_quant.auth.types import DependencyCallable
-from mysingle_quant.core.config import settings
-
+from ..auth.models import OAuthAccount, User
+from ..auth.schemas.user import UserCreate, UserUpdate
+from ..auth.types import DependencyCallable
+from ..core.config import settings
+from ..core.logging_config import get_logger
+from ..email.email_gen import generate_reset_password_email, generate_verification_email
+from ..email.email_sending import send_email
 from .jwt import decode_jwt, generate_jwt
 from .password_helper import PasswordHelper, PasswordHelperProtocol
+
+logger = get_logger(__name__)
 
 RESET_PASSWORD_TOKEN_AUDIENCE = "fastapi-users:reset"
 VERIFY_USER_TOKEN_AUDIENCE = "fastapi-users:verify"
@@ -126,6 +130,47 @@ class UserManager:
 
         return user
 
+    def find_oauth_account(
+        self, user: User, oauth_name: str, account_id: str
+    ) -> OAuthAccount | None:
+        """
+        사용자의 특정 OAuth 계정을 찾습니다.
+
+        :param user: 검색할 사용자.
+        :param oauth_name: OAuth 클라이언트 이름.
+        :param account_id: OAuth 계정 ID.
+        :return: 찾은 OAuth 계정 또는 None.
+        """
+        for oauth_account in user.oauth_accounts:
+            if (
+                oauth_account.oauth_name == oauth_name
+                and oauth_account.account_id == account_id
+            ):
+                return oauth_account
+        return None
+
+    async def remove_oauth_account(
+        self, user: User, oauth_name: str, account_id: str
+    ) -> User:
+        """
+        사용자에서 OAuth 계정을 제거합니다.
+
+        :param user: OAuth 계정을 제거할 사용자.
+        :param oauth_name: OAuth 클라이언트 이름.
+        :param account_id: OAuth 계정 ID.
+        :return: 업데이트된 사용자 객체.
+        :raises UserNotExists: OAuth 계정이 존재하지 않습니다.
+        """
+        oauth_account = self.find_oauth_account(user, oauth_name, account_id)
+        if oauth_account is None:
+            raise exceptions.UserNotExists(
+                identifier=f"{oauth_name}:{account_id}", identifier_type="OAuth account"
+            )
+
+        user.oauth_accounts.remove(oauth_account)
+        await user.save()
+        return user
+
     async def add_oauth_account(
         self, user: User, oauth_account_dict: dict[str, Any]
     ) -> User:
@@ -219,7 +264,7 @@ class UserManager:
         """
         OAuth 연결 성공 후 콜백 처리.
 
-        지정된 사용자에게 이 새로운 OAuth 계정을 추가합니다.
+        지정된 사용자에게 이 새로운 OAuth 계정을 추가하거나 기존 OAuth 계정을 업데이트합니다.
 
         :param oauth_name: OAuth 클라이언트 이름.
         :param access_token: 서비스 공급자에 대한 유효한 액세스 토큰.
@@ -240,7 +285,23 @@ class UserManager:
             "refresh_token": refresh_token,
         }
 
-        user = await self.add_oauth_account(user, oauth_account_dict)
+        # 기존 OAuth 계정이 있는지 확인
+        existing_oauth_account = self.find_oauth_account(user, oauth_name, account_id)
+
+        if existing_oauth_account:
+            # 기존 OAuth 계정 업데이트
+            logger.info(
+                f"Updating existing OAuth account for user {user.email}: {oauth_name}:{account_id}"
+            )
+            user = await self.update_oauth_account(
+                user, existing_oauth_account, oauth_account_dict
+            )
+        else:
+            # 새로운 OAuth 계정 추가
+            logger.info(
+                f"Adding new OAuth account for user {user.email}: {oauth_name}:{account_id}"
+            )
+            user = await self.add_oauth_account(user, oauth_account_dict)
 
         await self.on_after_update(user, {}, request)
 
@@ -459,93 +520,145 @@ class UserManager:
 
         return  # pragma: no cover
 
-    async def on_after_register(
-        self, user: User, request: Request | None = None
-    ) -> None:
-        """
-        Perform logic after successful user registration.
+    async def on_after_register(self, user: User, request: Request | None = None):
+        """신규 가입 후 이메일 인증 발송"""
+        logger.info(f"New user registered: {user.email} (ID: {user.id})")
 
-        *You should overload this method to add your own logic.*
+        if not user.is_verified and settings.emails_enabled:
+            try:
+                # 인증 이메일 발송
+                origin = (
+                    str(request.base_url).rstrip("/")
+                    if request
+                    else settings.FRONTEND_URL
+                )
+                email_data = generate_verification_email(user.email, origin)
 
-        :param user: The registered user
-        :param request: Optional FastAPI request that
-        triggered the operation, defaults to None.
-        """
-        return  # pragma: no cover
+                send_email(
+                    email_to=user.email,
+                    subject=email_data.subject,
+                    html_content=email_data.html_content,
+                )
+
+                logger.info(f"Verification email sent to {user.email}")
+            except Exception as e:
+                logger.error(f"Failed to send verification email to {user.email}: {e}")
 
     async def on_after_update(
-        self,
-        user: User,
-        update_dict: dict[str, Any],
-        request: Request | None = None,
-    ) -> None:
-        """
-        Perform logic after successful user update.
-
-        *You should overload this method to add your own logic.*
-
-        :param user: The updated user
-        :param update_dict: Dictionary with the updated user fields.
-        :param request: Optional FastAPI request that
-        triggered the operation, defaults to None.
-        """
-        return  # pragma: no cover
+        self, user: User, update_dict: dict, request: Request | None = None
+    ):
+        """사용자 정보 업데이트 후"""
+        logger.info(
+            f"User updated: {user.email} (ID: {user.id}), fields: {list(update_dict.keys())}"
+        )
 
     async def on_after_request_verify(
         self, user: User, token: str, request: Request | None = None
-    ) -> None:
-        """
-        Perform logic after successful verification request.
+    ):
+        """인증 이메일 재요청 후 발송"""
+        logger.info(
+            f"Email verification re-requested for user: {user.email} (ID: {user.id})"
+        )
 
-        *You should overload this method to add your own logic.*
+        if settings.emails_enabled:
+            try:
+                origin = (
+                    str(request.base_url).rstrip("/")
+                    if request
+                    else settings.FRONTEND_URL
+                )
+                email_data = generate_verification_email(user.email, origin)
 
-        :param user: The user to verify.
-        :param token: The verification token.
-        :param request: Optional FastAPI request that
-        triggered the operation, defaults to None.
-        """
-        return  # pragma: no cover
+                send_email(
+                    email_to=user.email,
+                    subject=email_data.subject,
+                    html_content=email_data.html_content,
+                )
 
-    async def on_after_verify(self, user: User, request: Request | None = None) -> None:
-        """
-        Perform logic after successful user verification.
+                logger.info(f"Verification email re-sent to {user.email}")
+            except Exception as e:
+                logger.error(
+                    f"Failed to re-send verification email to {user.email}: {e}"
+                )
 
-        *You should overload this method to add your own logic.*
-
-        :param user: The verified user.
-        :param request: Optional FastAPI request that
-        triggered the operation, defaults to None.
-        """
-        return  # pragma: no cover
+    async def on_after_verify(self, user: User, request: Request | None = None):
+        """이메일 인증 완료 후"""
+        logger.info(f"User email verified successfully: {user.email} (ID: {user.id})")
 
     async def on_after_forgot_password(
         self, user: User, token: str, request: Request | None = None
-    ) -> None:
-        """
-        Perform logic after successful forgot password request.
+    ):
+        """패스워드 복구 요청 후 이메일 발송"""
+        logger.info(f"Password reset requested for user: {user.email} (ID: {user.id})")
 
-        *You should overload this method to add your own logic.*
+        if settings.emails_enabled:
+            try:
+                origin = (
+                    str(request.base_url).rstrip("/")
+                    if request
+                    else settings.FRONTEND_URL
+                )
+                email_data = generate_reset_password_email(
+                    email_to=user.email,
+                    email=user.email,
+                    token=token,
+                    origin=origin,
+                )
 
-        :param user: The user that forgot its password.
-        :param token: The forgot password token.
-        :param request: Optional FastAPI request that
-        triggered the operation, defaults to None.
-        """
-        return  # pragma: no cover
+                send_email(
+                    email_to=user.email,
+                    subject=email_data.subject,
+                    html_content=email_data.html_content,
+                )
+
+                logger.info(f"Password reset email sent to {user.email}")
+            except Exception as e:
+                logger.error(
+                    f"Failed to send password reset email to {user.email}: {e}"
+                )
 
     async def on_after_reset_password(
         self, user: User, request: Request | None = None
     ) -> None:
         """
-        Perform logic after successful password reset.
+        비밀번호 재설정 성공 후 실행되는 로직.
 
-        *You should overload this method to add your own logic.*
+        보안 알림 이메일을 발송하고 로그를 기록합니다.
 
-        :param user: The user that reset its password.
-        :param request: Optional FastAPI request that
-        triggered the operation, defaults to None.
+        :param user: 비밀번호를 재설정한 사용자.
+        :param request: 작업을 트리거한 선택적 FastAPI 요청, 기본값은 None.
         """
-        return  # pragma: no cover
+        logger.info(f"Password reset completed for user: {user.email} (ID: {user.id})")
+
+        # 보안 알림 이메일 발송
+        if settings.emails_enabled:
+            try:
+                origin = (
+                    str(request.base_url).rstrip("/")
+                    if request
+                    else settings.FRONTEND_URL
+                )
+
+                # 새로운 템플릿을 사용한 보안 알림 이메일
+                from ..email.email_gen import generate_password_reset_confirmation_email
+
+                email_data = generate_password_reset_confirmation_email(
+                    email_to=user.email,
+                    username=user.full_name or user.email,
+                    origin=origin,
+                )
+
+                send_email(
+                    email_to=user.email,
+                    subject=email_data.subject,
+                    html_content=email_data.html_content,
+                )
+
+                logger.info(f"Password reset confirmation email sent to {user.email}")
+            except Exception as e:
+                logger.error(
+                    f"Failed to send password reset confirmation email to {user.email}: {e}"
+                )
 
     async def on_after_login(
         self,
