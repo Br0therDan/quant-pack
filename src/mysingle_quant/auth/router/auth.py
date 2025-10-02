@@ -3,7 +3,7 @@
 from typing import Annotated
 
 from beanie import PydanticObjectId
-from fastapi import APIRouter, Depends, Header, Request, status
+from fastapi import APIRouter, Cookie, Depends, Header, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 
 from ...core.config import settings
@@ -94,13 +94,17 @@ def create_auth_router() -> APIRouter:
     @router.post("/refresh", response_model=LoginResponse)
     async def refresh_token(
         request: Request,
-        refresh_token: str = Header(..., alias="X-Refresh-Token"),
+        refresh_token_header: str | None = Header(None, alias="X-Refresh-Token"),
+        refresh_token_cookie: str | None = Cookie(None, alias="refresh_token"),
     ) -> LoginResponse:
         """
         JWT 토큰 갱신 엔드포인트.
 
         현재는 Access Token과 Refresh Token을 모두 새로 발급합니다.
         """
+        refresh_token = refresh_token_header or refresh_token_cookie
+        if not refresh_token:
+            raise AuthenticationFailed("Refresh token not provided")
         payload = validate_token(refresh_token)
 
         if payload.get("aud") != ["quant-users"]:
