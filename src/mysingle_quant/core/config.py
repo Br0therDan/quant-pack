@@ -3,18 +3,11 @@
 from typing import Self
 
 from pydantic import Field, computed_field, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings
 
 
 class CommonSettings(BaseSettings):
     """Common settings for all microservices."""
-
-    model_config = SettingsConfigDict(
-        env_file=["../.env"],
-        env_file_encoding="utf-8",
-        case_sensitive=False,
-        extra="allow",  # Allow extra fields from .env
-    )
 
     # Project Settings
     PROJECT_NAME: str = Field(default="Quant Platform", description="Project name")
@@ -25,6 +18,10 @@ class CommonSettings(BaseSettings):
     DEBUG: bool = Field(default=True, description="Debug mode")
     DEV_MODE: bool = Field(default=True, description="Development mode")
     MOCK_DATABASE: bool = Field(default=False, description="Use mock database")
+
+    SUPERUSER_EMAIL: str = "your_email@example.com"
+    SUPERUSER_PASSWORD: str = "change-this-admin-password"
+    SUPERUSER_FULLNAME: str = "Admin User"
 
     FRONTEND_URL: str = Field(
         default="http://localhost:3000", description="Frontend application URL"
