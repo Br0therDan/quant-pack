@@ -41,8 +41,8 @@ async def create_first_super_admin() -> None:
         logger.info("Creating new Super Admin user...")
         user = User(
             email=settings.SUPERUSER_EMAIL,
-            full_name=settings.SUPERUSER_FULLNAME,
             hashed_password=password_helper.hash(settings.SUPERUSER_PASSWORD),
+            full_name=settings.SUPERUSER_FULLNAME,
             is_active=True,
             is_superuser=True,
             is_verified=True,

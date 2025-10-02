@@ -2,7 +2,7 @@
 
 from typing import Self
 
-from pydantic import Field, computed_field, model_validator
+from pydantic import EmailStr, Field, computed_field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -26,7 +26,7 @@ class CommonSettings(BaseSettings):
     DEV_MODE: bool = Field(default=True, description="Development mode")
     MOCK_DATABASE: bool = Field(default=False, description="Use mock database")
 
-    SUPERUSER_EMAIL: str = "your_email@example.com"
+    SUPERUSER_EMAIL: EmailStr = "your_email@example.com"
     SUPERUSER_PASSWORD: str = "change-this-admin-password"
     SUPERUSER_FULLNAME: str = "Admin User"
 
