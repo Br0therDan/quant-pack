@@ -11,8 +11,8 @@ from .exceptions import (
     UserInactive,
     UserNotExists,
 )
-from .jwt import read_token
 from .models import User
+from .user_manager import UserManager
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 # --------------------------------------------------------
 VERSION = settings.AUTH_API_VERSION
 
+user_manager = UserManager()
 reusable_oauth2 = OAuth2PasswordBearer(
     tokenUrl=f"/api/{VERSION}/auth/login", auto_error=False
 )
@@ -32,7 +33,7 @@ async def get_current_user(
     """
     토큰(쿠키 또는 헤더)을 디코딩하여 현재 사용자를 반환합니다.
     """
-    user = await read_token(token, token_audience=["fastapi-users"])
+    user = await user_manager.read_token(token, token_audience=["fastapi-users"])
     if not user:
         raise UserNotExists(identifier="token", identifier_type="authenticated user")
     return user

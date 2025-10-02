@@ -77,6 +77,28 @@ class UserManager:
         """
         raise NotImplementedError()
 
+    async def read_token(
+        self,
+        encoded_token: str | None,
+        token_audience: list[str] = ["fastapi-users"],
+    ) -> User | None:
+        if encoded_token is None:
+            return None
+        try:
+            data = decode_jwt(encoded_token, token_audience)
+            user_id = data.get("sub")
+            if user_id is None:
+                return None
+        except jwt.PyJWTError:
+            return None
+
+        try:
+            parsed_id = self.parse_id(user_id)
+            user = await self.get(parsed_id)
+            return user
+        except (UserNotExists, InvalidID):
+            return None
+
     @staticmethod
     def model_dump(model: BaseModel, *args: Any, **kwargs: Any) -> dict[str, Any]:
         return model.model_dump(*args, **kwargs)

@@ -4,14 +4,11 @@ from typing import Any, Union
 import jwt
 from pydantic import SecretStr
 
-from ..auth.exceptions import InvalidID, UserNotExists
 from ..auth.models import User
-from ..auth.user_manager import UserManager
 from ..core.config import settings
 
 SecretType = Union[str, SecretStr]
 ALGORITHM = settings.ALGORITHM
-user_manager = UserManager()
 
 
 class JWTStrategyDestroyNotSupportedError(Exception):
@@ -49,28 +46,6 @@ def decode_jwt(
         audience=audience,
         algorithms=[ALGORITHM],
     )
-
-
-async def read_token(
-    encoded_token: str | None,
-    token_audience: list[str] = ["fastapi-users"],
-) -> User | None:
-    if encoded_token is None:
-        return None
-    try:
-        data = decode_jwt(encoded_token, token_audience)
-        user_id = data.get("sub")
-        if user_id is None:
-            return None
-    except jwt.PyJWTError:
-        return None
-
-    try:
-        parsed_id = user_manager.parse_id(user_id)
-        user = await user_manager.get(parsed_id)
-        return user
-    except (UserNotExists, InvalidID):
-        return None
 
 
 async def write_token(user: User) -> str:
