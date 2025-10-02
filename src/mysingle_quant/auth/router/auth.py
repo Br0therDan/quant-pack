@@ -1,6 +1,9 @@
 """Health check utilities and endpoints."""
 
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, Request, status
+from fastapi.security import OAuth2PasswordRequestForm
 
 from ...core.config import settings
 from ...core.logging_config import get_logger
@@ -8,7 +11,7 @@ from ..deps import get_current_active_verified_user
 from ..exceptions import AuthenticationFailed, UserInactive, UserNotExists
 from ..jwt import generate_jwt
 from ..models import User
-from ..schemas.auth import LoginRequest, LoginResponse
+from ..schemas.auth import LoginResponse
 from ..schemas.user import UserResponse
 from ..user_manager import UserManager
 
@@ -27,14 +30,14 @@ def create_auth_router() -> APIRouter:
     )
     async def login(
         request: Request,
-        login_data: LoginRequest,
+        form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     ) -> LoginResponse:
         user = await user_manager.authenticate(
-            username=login_data.username, password=login_data.password
+            username=form_data.username, password=form_data.password
         )
 
         if user is None:
-            raise UserNotExists(identifier=login_data.username)
+            raise UserNotExists(identifier=form_data.username)
 
         if not user.is_active:
             raise UserInactive(user_id=str(user.id))
@@ -50,13 +53,10 @@ def create_auth_router() -> APIRouter:
         token = generate_jwt(
             token_data, lifetime_seconds=access_token_expire_minutes * 60
         )
-        logger.info(f"User {user.email} logged in.")
-        # User 객체를 dict로 변환하면서 ObjectId를 문자열로 변환
-        user_dict = user.model_dump()
-        user_dict["id"] = str(user.id)  # ObjectId를 문자열로 변환
-        user_info = UserResponse.model_validate(user_dict)
         response = LoginResponse(
-            access_token=token, token_type="bearer", user_info=user_info.model_dump()
+            access_token=token,
+            token_type="bearer",
+            user_info=UserResponse(**user.model_dump(by_alias=True)),
         )
 
         await user_manager.on_after_login(user, request)

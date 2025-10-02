@@ -1,10 +1,11 @@
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from beanie import PydanticObjectId
+from pydantic import BaseModel, EmailStr, Field
 
 
 class UserResponse(BaseModel):
     """Base User model."""
 
-    id: str = Field(..., alias="_id")
+    _id: PydanticObjectId
     email: EmailStr
     full_name: str | None = None
     is_active: bool = True
@@ -12,7 +13,29 @@ class UserResponse(BaseModel):
     is_verified: bool = False
     oauth_accounts: list["OAuthAccount"] = Field(default_factory=list)
 
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        from_attributes = True
+        json_schema_extra = {
+            "example": {
+                "_id": "string",
+                "email": "user@example.com",
+                "full_name": "string",
+                "is_active": True,
+                "is_superuser": False,
+                "is_verified": False,
+                "oauth_accounts": [
+                    {
+                        "_id": "string",
+                        "oauth_name": "string",
+                        "access_token": "string",
+                        "expires_at": 1234567890,
+                        "refresh_token": "string",
+                        "account_id": "string",
+                        "account_email": "user@example.com",
+                    }
+                ],
+            }
+        }
 
 
 class UserCreate(BaseModel):
@@ -23,6 +46,18 @@ class UserCreate(BaseModel):
     is_superuser: bool | None = False
     is_verified: bool | None = False
 
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "email": "user@example.com",
+                "full_name": "string",
+                "password": "string",
+                "is_active": True,
+                "is_superuser": False,
+                "is_verified": False,
+            }
+        }
+
 
 class UserUpdate(BaseModel):
     password: str | None = None
@@ -32,11 +67,23 @@ class UserUpdate(BaseModel):
     is_superuser: bool | None = None
     is_verified: bool | None = None
 
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "email": "user@example.com",
+                "full_name": "string",
+                "password": "string",
+                "is_active": True,
+                "is_superuser": False,
+                "is_verified": False,
+            }
+        }
+
 
 class OAuthAccount(BaseModel):
     """Base OAuth account model."""
 
-    id: str = Field(..., alias="_id")
+    _id: PydanticObjectId
     oauth_name: str
     access_token: str
     expires_at: int | None = None
@@ -44,4 +91,16 @@ class OAuthAccount(BaseModel):
     account_id: str
     account_email: str
 
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        from_attributes = True
+        json_schema_extra = {
+            "example": {
+                "_id": "string",
+                "oauth_name": "string",
+                "access_token": "string",
+                "expires_at": 1234567890,
+                "refresh_token": "string",
+                "account_id": "string",
+                "account_email": "user@example.com",
+            }
+        }
