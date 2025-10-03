@@ -86,7 +86,7 @@ def create_auth_tokens(
     return access_token, refresh_token
 
 
-def validate_token(token: str) -> dict:
+def validate_token(token: str) -> AccessTokenData:
     """
     JWT 토큰 검증하고 payload를 dict로 반환
     """
@@ -94,7 +94,7 @@ def validate_token(token: str) -> dict:
         payload = jwt.decode(
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
-        return payload
+        return AccessTokenData.model_validate(payload)
     except InvalidTokenError as e:
         logger.error(f"Token validation failed: {e}")
         raise ValueError("Invalid token")

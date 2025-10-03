@@ -108,9 +108,9 @@ def create_auth_router() -> APIRouter:
             raise AuthenticationFailed("Refresh token not provided")
         payload = validate_token(refresh_token)
 
-        if payload.get("aud") != ["quant-users"]:
+        if payload.aud != ["quant-users"]:
             raise AuthenticationFailed("Invalid token audience")
-        user_id = payload.get("sub")
+        user_id = payload.sub
         user = await user_manager.get(PydanticObjectId(user_id))
 
         access_token_data = AccessTokenData(

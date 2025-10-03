@@ -2,6 +2,7 @@
 
 import logging
 
+from beanie import PydanticObjectId
 from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
 
@@ -12,6 +13,7 @@ from .exceptions import (
     UserNotExists,
 )
 from .models import User
+from .security import validate_token
 from .user_manager import UserManager
 
 logger = logging.getLogger(__name__)
@@ -37,7 +39,11 @@ async def get_current_user(
         raise UserNotExists(identifier="token", identifier_type="authentication token")
 
     try:
-        user = await user_manager.read_token(token, token_audience=["fastapi-users"])
+        decoded_token = validate_token(token)
+        user_id = decoded_token.sub
+        if not user_id:
+            raise UserNotExists(identifier="user", identifier_type="authenticated user")
+        user = await user_manager.get(PydanticObjectId(user_id))
         if not user:
             raise UserNotExists(identifier="user", identifier_type="authenticated user")
         return user

@@ -93,8 +93,7 @@ class UserManager:
             return None
 
         try:
-            parsed_id = self.parse_id(user_id)
-            user = await self.get(parsed_id)
+            user = await self.get(user_id)
             return user
         except (UserNotExists, InvalidID):
             return None
