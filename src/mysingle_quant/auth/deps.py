@@ -9,6 +9,7 @@ from fastapi.security import OAuth2PasswordBearer
 from ..core.config import settings
 from .exceptions import (
     AuthorizationFailed,
+    InvalidToken,
     UserInactive,
     UserNotExists,
 )
@@ -47,11 +48,21 @@ async def get_current_user(
         if not user:
             raise UserNotExists(identifier="user", identifier_type="authenticated user")
         return user
+    except InvalidToken:
+        # 이미 InvalidToken 예외인 경우 그대로 재발생
+        raise
     except Exception as e:
         logger.error(f"Token validation failed: {e}")
-        raise UserNotExists(
-            identifier="token", identifier_type="valid authentication token"
-        )
+        # 토큰 만료의 경우 구체적인 메시지 제공
+        if "expired" in str(e).lower():
+            raise InvalidToken(
+                token_type="Access Token",
+                reason="Token has expired. Please login again.",
+            )
+        else:
+            raise InvalidToken(
+                token_type="Access Token", reason="Token validation error"
+            )
 
 
 # --------------------------------------------------------

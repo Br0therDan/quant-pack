@@ -132,6 +132,16 @@ class TokenExpired(AuthException):
         super().__init__(message, {"token_type": token_type})
 
 
+class InvalidToken(AuthException):
+    """유효하지 않은 토큰 예외"""
+
+    def __init__(self, token_type: str = "token", reason: str | None = None):
+        message = (
+            f"Invalid {token_type}: {reason}" if reason else f"Invalid {token_type}"
+        )
+        super().__init__(message, {"token_type": token_type, "reason": reason})
+
+
 class JWTStrategyDestroyNotSupportedError(AuthException):
     """JWT 전략에서 토큰 파기가 지원되지 않는 예외"""
 

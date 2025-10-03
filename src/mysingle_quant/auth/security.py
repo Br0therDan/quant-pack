@@ -2,7 +2,8 @@ from datetime import UTC, datetime, timedelta
 from typing import Any, Union
 
 import jwt
-from jwt.exceptions import InvalidTokenError, PyJWTError
+from fastapi import HTTPException
+from jwt.exceptions import PyJWTError
 from pydantic import SecretStr
 
 from ..core.config import settings
@@ -65,8 +66,8 @@ def create_auth_tokens(
     try:
         access_token = jwt.encode(
             access_token_data.model_dump(),
-            settings.SECRET_KEY,
-            algorithm=settings.ALGORITHM,
+            _get_secret_value(settings.SECRET_KEY),
+            algorithm=ALGORITHM,
         )
     except PyJWTError as e:
         logger.error(f"Failed to generate access token: {e}")
@@ -76,8 +77,8 @@ def create_auth_tokens(
     try:
         refresh_token = jwt.encode(
             refresh_token_data.model_dump(),
-            settings.SECRET_KEY,
-            algorithm=settings.ALGORITHM,
+            _get_secret_value(settings.SECRET_KEY),
+            algorithm=ALGORITHM,
         )
     except PyJWTError as e:
         logger.error(f"Failed to generate refresh token: {e}")
@@ -92,9 +93,30 @@ def validate_token(token: str) -> AccessTokenData:
     """
     try:
         payload = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+            token,
+            _get_secret_value(settings.SECRET_KEY),
+            algorithms=[ALGORITHM],
+            audience=["quant-users"],
         )
         return AccessTokenData.model_validate(payload)
-    except InvalidTokenError as e:
+    except jwt.ExpiredSignatureError:
+        logger.warning("Token has expired")
+        raise HTTPException(
+            status_code=401,
+            detail="Token has expired. Please login again.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except jwt.InvalidTokenError as e:
+        logger.error(f"Invalid token: {e}")
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except Exception as e:
         logger.error(f"Token validation failed: {e}")
-        raise ValueError("Invalid token")
+        raise HTTPException(
+            status_code=401,
+            detail="Token validation error",
+            headers={"WWW-Authenticate": "Bearer"},
+        )

@@ -55,7 +55,7 @@ class CommonSettings(BaseSettings):
         default="dev-secret-key-change-in-production", description="Secret key for JWT"
     )
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(
-        default=30, description="Access token expiration in minutes"
+        default=480, description="Access token expiration in minutes (8 hours)"
     )
     REFRESH_TOKEN_EXPIRE_DAYS: int = Field(
         default=7, description="Refresh token expiration in days"

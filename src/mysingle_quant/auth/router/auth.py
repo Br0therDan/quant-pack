@@ -1,6 +1,6 @@
 """Health check utilities and endpoints."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from beanie import PydanticObjectId
@@ -47,17 +47,34 @@ def create_auth_router() -> APIRouter:
         if not user.is_verified:
             raise AuthenticationFailed("User not verified")
 
+        now = datetime.now(UTC)
+        access_exp = int(
+            (now + timedelta(minutes=access_token_expire_minutes)).timestamp()
+        )
+        refresh_exp = int(
+            (now + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)).timestamp()
+        )
+
+        logger.info(f"Creating tokens for user {user.email}")
+        logger.info(f"Current time: {now.isoformat()}")
+        logger.info(
+            f"Access token expires at: {datetime.fromtimestamp(access_exp, UTC).isoformat()}"
+        )
+        logger.info(
+            f"Refresh token expires at: {datetime.fromtimestamp(refresh_exp, UTC).isoformat()}"
+        )
+
         access_token_data = AccessTokenData(
             sub=str(user.id),
             email=user.email,
-            exp=access_token_expire_minutes * 60,
-            iat=int(datetime.now(UTC).timestamp()),
+            exp=access_exp,
+            iat=int(now.timestamp()),
             aud=["quant-users"],  # TODO: audience 설정 옵션 추가 필요
         )
         refresh_token_data = RefreshTokenData(
             sub=str(user.id),
-            exp=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
-            iat=int(datetime.now(UTC).timestamp()),
+            exp=refresh_exp,
+            iat=int(now.timestamp()),
             aud=["quant-users"],  # TODO: audience 설정 옵션 추가 필요
         )
 
@@ -141,5 +158,19 @@ def create_auth_router() -> APIRouter:
 
         await user_manager.on_after_login(user, request)
         return response
+
+    @router.get("/token/verify")
+    async def verify_token(
+        current_user: User = Depends(get_current_active_verified_user),
+    ) -> dict:
+        """토큰 검증 및 사용자 정보 반환 (디버깅용)"""
+        return {
+            "valid": True,
+            "user_id": str(current_user.id),
+            "email": current_user.email,
+            "is_active": current_user.is_active,
+            "is_verified": current_user.is_verified,
+            "is_superuser": current_user.is_superuser,
+        }
 
     return router
