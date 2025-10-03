@@ -10,7 +10,7 @@ from ..schemas import OAuth2AuthorizeResponse, UserResponse
 from ..security import decode_jwt, generate_jwt
 from ..user_manager import UserManager
 
-STATE_TOKEN_AUDIENCE = "fastapi-users:oauth-state"
+STATE_TOKEN_AUDIENCE = "quant-users:oauth-state"
 user_manager = UserManager()
 
 

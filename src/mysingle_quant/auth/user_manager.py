@@ -27,8 +27,8 @@ from .security import decode_jwt, generate_jwt
 
 logger = get_logger(__name__)
 
-RESET_PASSWORD_TOKEN_AUDIENCE = "fastapi-users:reset"
-VERIFY_USER_TOKEN_AUDIENCE = "fastapi-users:verify"
+RESET_PASSWORD_TOKEN_AUDIENCE = "quant-users:reset"
+VERIFY_USER_TOKEN_AUDIENCE = "quant-users:verify"
 SCHEMA = TypeVar("SCHEMA", bound=BaseModel)
 
 
@@ -80,7 +80,7 @@ class UserManager:
     async def read_token(
         self,
         encoded_token: str | None,
-        token_audience: list[str] = ["fastapi-users"],
+        token_audience: list[str] = ["quant-users"],
     ) -> User | None:
         if encoded_token is None:
             return None
