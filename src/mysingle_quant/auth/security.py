@@ -31,9 +31,13 @@ def generate_jwt(
     lifetime_seconds: int | None = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
 ) -> str:
     payload = data.copy()
+    now = datetime.now(UTC)
+    payload["iat"] = int(now.timestamp())
+
     if lifetime_seconds:
-        expire = datetime.now(UTC) + timedelta(seconds=lifetime_seconds)
-        payload["exp"] = expire
+        expire = now + timedelta(seconds=lifetime_seconds)
+        payload["exp"] = int(expire.timestamp())
+
     return jwt.encode(
         payload, _get_secret_value(settings.SECRET_KEY), algorithm=ALGORITHM
     )

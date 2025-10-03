@@ -1,5 +1,6 @@
 """Health check utilities and endpoints."""
 
+from datetime import UTC, datetime
 from typing import Annotated
 
 from beanie import PydanticObjectId
@@ -50,13 +51,13 @@ def create_auth_router() -> APIRouter:
             sub=str(user.id),
             email=user.email,
             exp=access_token_expire_minutes * 60,
-            iat=0,
+            iat=int(datetime.now(UTC).timestamp()),
             aud=["quant-users"],  # TODO: audience 설정 옵션 추가 필요
         )
         refresh_token_data = RefreshTokenData(
             sub=str(user.id),
             exp=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
-            iat=0,
+            iat=int(datetime.now(UTC).timestamp()),
             aud=["quant-users"],  # TODO: audience 설정 옵션 추가 필요
         )
 
