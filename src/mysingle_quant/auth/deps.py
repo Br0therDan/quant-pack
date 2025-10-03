@@ -33,7 +33,7 @@ async def get_current_user(
     """
     토큰(쿠키 또는 헤더)을 디코딩하여 현재 사용자를 반환합니다.
     """
-    user = await user_manager.read_token(token, token_audience=["fastapi-users"])
+    user = await user_manager.read_token(token, token_audience=["quant-users"])
     if not user:
         raise UserNotExists(identifier="token", identifier_type="authenticated user")
     return user

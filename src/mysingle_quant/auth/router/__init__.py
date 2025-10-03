@@ -1,6 +1,8 @@
 from fastapi import APIRouter
 
 from .auth import create_auth_router
+
+# from .oauth2 import get_oauth_associate_router
 from .oauth_management import get_oauth_management_router
 from .register import get_register_router
 from .reset import get_reset_password_router
