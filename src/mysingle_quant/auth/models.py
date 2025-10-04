@@ -12,6 +12,7 @@ class User(BaseDoc):
     is_active: bool = True
     is_superuser: bool = False
     is_verified: bool = False
+    avatar_url: str | None = None
     oauth_accounts: list["OAuthAccount"] = Field(default_factory=list)
 
     class Settings:

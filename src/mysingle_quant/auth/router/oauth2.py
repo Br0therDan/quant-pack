@@ -1,32 +1,27 @@
-import jwt
+from typing import Literal
+
 from fastapi import APIRouter, Depends, Query, Request
 from httpx_oauth.integrations.fastapi import OAuth2AuthorizeCallback
-from httpx_oauth.oauth2 import BaseOAuth2, OAuth2Token
+from httpx_oauth.oauth2 import OAuth2Token
 
-from ..deps import get_current_active_user
-from ..exceptions import AuthenticationFailed, AuthorizationFailed
-from ..models import User
+from ..exceptions import AuthenticationFailed
+from ..oauth2.clients import get_oauth2_client
 from ..schemas import OAuth2AuthorizeResponse, UserResponse
-from ..security import decode_jwt, generate_jwt
 from ..user_manager import UserManager
 
-STATE_TOKEN_AUDIENCE = "quant-users:oauth-state"
 user_manager = UserManager()
 
 
-def generate_state_token(data: dict[str, str], lifetime_seconds: int = 3600) -> str:
-    data["aud"] = STATE_TOKEN_AUDIENCE
-    return generate_jwt(data, lifetime_seconds)
-
-
-def get_oauth_associate_router(
-    oauth_client: BaseOAuth2,
+def get_oauth2_router(
+    provider_name: Literal["google", "kakao", "naver"] = "google",
     redirect_url: str | None = None,
 ) -> APIRouter:
     """Generate a router with the OAuth routes to associate an authenticated user."""
+
     router = APIRouter()
 
-    callback_route_name = f"oauth-associate:{oauth_client.name}.callback"
+    oauth_client = get_oauth2_client(provider_name=provider_name)
+    callback_route_name = f"{provider_name}.callback"
 
     if redirect_url is not None:
         oauth2_authorize_callback = OAuth2AuthorizeCallback(
@@ -36,42 +31,44 @@ def get_oauth_associate_router(
     else:
         oauth2_authorize_callback = OAuth2AuthorizeCallback(
             oauth_client,
-            route_name=callback_route_name,
         )
 
     @router.get(
         "/authorize",
-        name=f"oauth-associate:{oauth_client.name}.authorize",
         response_model=OAuth2AuthorizeResponse,
     )
     async def authorize(
         request: Request,
+        state: str | None = Query(None),
         scopes: list[str] = Query(None),
-        user: User = Depends(get_current_active_user),
     ) -> OAuth2AuthorizeResponse:
+        """
+        Initiate the OAuth2 authorization process for associating an OAuth account
+        with the currently authenticated user.
+        """
         if redirect_url is not None:
             authorize_redirect_url = redirect_url
         else:
             authorize_redirect_url = str(request.url_for(callback_route_name))
 
-        state_data: dict[str, str] = {"sub": str(user.id)}
-        state = generate_state_token(state_data)
         authorization_url = await oauth_client.get_authorization_url(
-            authorize_redirect_url,
-            state,
-            scopes,
+            redirect_uri=authorize_redirect_url,
+            state=state,
+            scope=scopes,
+            code_challenge=None,
+            code_challenge_method=None,
+            extras_params={},
         )
 
         return OAuth2AuthorizeResponse(authorization_url=authorization_url)
 
     @router.get(
-        "/callback",
+        "/{provider}/callback",
         response_model=UserResponse,
         description="The response varies based on the authentication backend used.",
     )
     async def callback(
         request: Request,
-        user: User = Depends(get_current_active_user),
         access_token_state: tuple[OAuth2Token, str] = Depends(
             oauth2_authorize_callback
         ),
@@ -84,16 +81,12 @@ def get_oauth_associate_router(
         if account_email is None:
             raise AuthenticationFailed("OAuth provider did not provide email")
 
-        try:
-            state_data = decode_jwt(state, [STATE_TOKEN_AUDIENCE])
-        except jwt.DecodeError:
-            raise AuthenticationFailed("Invalid OAuth state token")
+        # try:
+        #     state_data = decode_jwt(token=state, audience="users:oauth-state")
+        # except jwt.DecodeError:
+        #     raise AuthenticationFailed("Invalid OAuth state token")
 
-        if state_data["sub"] != str(user.id):
-            raise AuthorizationFailed("OAuth state user mismatch")
-
-        user = await user_manager.oauth_associate_callback(
-            user,
+        user = await user_manager.oauth_callback(
             oauth_client.name,
             token["access_token"],
             account_id,

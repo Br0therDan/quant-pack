@@ -2,7 +2,7 @@ import logging
 
 from ..core.config import settings
 from .models import User
-from .password_helper import PasswordHelper
+from .security.password import PasswordHelper
 
 password_helper = PasswordHelper()
 

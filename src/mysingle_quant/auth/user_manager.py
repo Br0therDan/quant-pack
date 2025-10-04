@@ -11,7 +11,11 @@ from ..auth.schemas.user import UserCreate, UserUpdate
 from ..auth.types import DependencyCallable
 from ..core.config import settings
 from ..core.logging_config import get_logger
-from ..email.email_gen import generate_reset_password_email, generate_verification_email
+from ..email.email_gen import (
+    generate_new_account_email,
+    generate_reset_password_email,
+    generate_verification_email,
+)
 from ..email.email_sending import send_email
 from .exceptions import (
     InvalidID,
@@ -22,13 +26,13 @@ from .exceptions import (
     UserInactive,
     UserNotExists,
 )
-from .password_helper import PasswordHelper, PasswordHelperProtocol
-from .security import decode_jwt, generate_jwt
+from .security.jwt import decode_jwt, generate_jwt
+from .security.password import password_helper
 
 logger = get_logger(__name__)
 
-RESET_PASSWORD_TOKEN_AUDIENCE = "quant-users:reset"
-VERIFY_USER_TOKEN_AUDIENCE = "quant-users:verify"
+# RESET_PASSWORD_TOKEN_AUDIENCE = "users:reset"
+# VERIFY_USER_TOKEN_AUDIENCE = "users:verify"
 SCHEMA = TypeVar("SCHEMA", bound=BaseModel)
 
 
@@ -38,8 +42,7 @@ class UserManager:
 
     :attribute reset_password_token_secret: 비밀번호 재설정 토큰을
         인코딩하는 데 사용되는 비밀 키.
-    :attribute reset_password_token_lifetime_seconds: 비밀번호 재설정
-        토큰의 유효 기간(초).
+
     :attribute reset_password_token_audience: 비밀번호 재설정 토큰의 JWT 대상(audience).
     :attribute verification_token_secret: 인증 토큰을 인코딩하는 데 사용되는 비밀 키.
     :attribute verification_token_lifetime_seconds: 인증 토큰의 유효 기간.
@@ -48,44 +51,23 @@ class UserManager:
     :param user_db: 데이터베이스 어댑터 인스턴스.
     """
 
-    reset_password_token_lifetime_seconds: int = (
-        settings.RESET_TOKEN_EXPIRE_MINUTES * 60
-    )
-    reset_password_token_audience: str = RESET_PASSWORD_TOKEN_AUDIENCE
-
-    verification_token_lifetime_seconds: int = settings.VERIFY_TOKEN_EXPIRE_MINUTES * 60
-    verification_token_audience: str = VERIFY_USER_TOKEN_AUDIENCE
-
-    password_helper: PasswordHelperProtocol
-
     def __init__(
         self,
-        password_helper: PasswordHelperProtocol | None = None,
     ):
         if password_helper is None:
-            self.password_helper = PasswordHelper()
+            self.password_helper = password_helper
         else:
             self.password_helper = password_helper
 
-    def parse_id(self, value: Any) -> PydanticObjectId:
-        """
-        Parse a value into a correct PydanticObjectId instance.
-
-        :param value: The value to parse.
-        :raises InvalidID: The PydanticObjectId value is invalid.
-        :return: An PydanticObjectId object.
-        """
-        raise NotImplementedError()
-
-    async def read_token(
+    async def read_user_from_token(
         self,
-        encoded_token: str | None,
+        token: str | None,
         token_audience: list[str] = ["quant-users"],
     ) -> User | None:
-        if encoded_token is None:
+        if token is None:
             return None
         try:
-            data = decode_jwt(encoded_token, token_audience)
+            data = decode_jwt(token)
             user_id = data.get("sub")
             if user_id is None:
                 return None
@@ -279,9 +261,8 @@ class UserManager:
 
         return created_user
 
-    async def oauth_associate_callback(
+    async def oauth_callback(
         self,
-        user: User,
         oauth_name: str,
         access_token: str,
         account_id: str,
@@ -289,6 +270,8 @@ class UserManager:
         expires_at: int | None = None,
         refresh_token: str | None = None,
         request: Request | None = None,
+        *,
+        associate_by_email: bool = True,
     ) -> User:
         """
         OAuth 연결 성공 후 콜백 처리.
@@ -315,24 +298,36 @@ class UserManager:
         }
 
         # 기존 OAuth 계정이 있는지 확인
-        existing_oauth_account = self.find_oauth_account(user, oauth_name, account_id)
-
-        if existing_oauth_account:
-            # 기존 OAuth 계정 업데이트
-            logger.info(
-                f"Updating existing OAuth account for user {user.email}: {oauth_name}:{account_id}"
-            )
-            user = await self.update_oauth_account(
-                user, existing_oauth_account, oauth_account_dict
-            )
+        try:
+            user = await self.get_by_oauth_account(oauth_name, account_id)
+        except UserNotExists:
+            try:
+                # Associate account
+                user = await self.get_by_email(account_email)
+                if not associate_by_email:
+                    raise UserAlreadyExists()
+                user = await self.add_oauth_account(user, oauth_account_dict)
+            except UserNotExists:
+                # Create account
+                password = self.password_helper.generate_secure_password()
+                new_user = UserCreate(
+                    email=account_email,
+                    full_name=account_email,
+                    password=password,
+                )
+                user = await self.create(new_user)
+                user = await self.add_oauth_account(user, oauth_account_dict)
+                await self.on_after_register_by_oauth(user, password, request)
         else:
-            # 새로운 OAuth 계정 추가
-            logger.info(
-                f"Adding new OAuth account for user {user.email}: {oauth_name}:{account_id}"
-            )
-            user = await self.add_oauth_account(user, oauth_account_dict)
-
-        await self.on_after_update(user, {}, request)
+            # Update oauth
+            for existing_oauth_account in user.oauth_accounts:
+                if (
+                    existing_oauth_account.account_id == account_id
+                    and existing_oauth_account.oauth_name == oauth_name
+                ):
+                    user = await self.update_oauth_account(
+                        user, existing_oauth_account, oauth_account_dict
+                    )
 
         return user
 
@@ -355,12 +350,9 @@ class UserManager:
         token_data = {
             "sub": str(user.id),
             "email": user.email,
-            "aud": self.verification_token_audience,
+            "aud": "users:verify",
         }
-        token = generate_jwt(
-            token_data,
-            lifetime_seconds=self.verification_token_lifetime_seconds,
-        )
+        token = generate_jwt(token_data)
         await self.on_after_request_verify(user, token, request)
 
     async def verify(self, token: str, request: Request | None = None) -> User:
@@ -378,15 +370,12 @@ class UserManager:
         :return: 인증된 사용자.
         """
         try:
-            data = decode_jwt(
-                token,
-                [self.verification_token_audience],
-            )
+            data = decode_jwt(token)
         except jwt.PyJWTError:
             raise InvalidVerifyToken()
 
         try:
-            user_id = data["sub"]
+            # user_id = data["sub"]
             email = data["email"]
         except KeyError:
             raise InvalidVerifyToken()
@@ -395,15 +384,6 @@ class UserManager:
             user = await self.get_by_email(email)
         except UserNotExists:
             raise InvalidVerifyToken()
-
-        try:
-            parsed_id = self.parse_id(user_id)
-        except InvalidID:
-            raise InvalidVerifyToken()
-
-        if parsed_id != user.id:
-            raise InvalidVerifyToken()
-
         if user.is_verified:
             raise UserAlreadyVerified()
 
@@ -429,13 +409,10 @@ class UserManager:
 
         token_data = {
             "sub": str(user.id),
-            "password_fgpt": self.password_helper.hash(user.hashed_password),
-            "aud": self.reset_password_token_audience,
+            "password_fgpt": password_helper.hash(user.hashed_password),
+            "aud": "users:reset",
         }
-        token = generate_jwt(
-            token_data,
-            lifetime_seconds=self.reset_password_token_lifetime_seconds,
-        )
+        token = generate_jwt(token_data)
         await self.on_after_forgot_password(user, token, request)
 
     async def reset_password(
@@ -455,10 +432,7 @@ class UserManager:
         :return: 비밀번호가 업데이트된 사용자.
         """
         try:
-            data = decode_jwt(
-                token,
-                [self.reset_password_token_audience],
-            )
+            data = decode_jwt(token)
         except jwt.PyJWTError:
             raise InvalidResetPasswordToken()
 
@@ -467,13 +441,7 @@ class UserManager:
             password_fingerprint = data["password_fgpt"]
         except KeyError:
             raise InvalidResetPasswordToken()
-
-        try:
-            parsed_id = self.parse_id(user_id)
-        except InvalidID:
-            raise InvalidResetPasswordToken()
-
-        user = await self.get(parsed_id)
+        user = await self.get(user_id)
 
         valid_password_fingerprint, _ = self.password_helper.verify_and_update(
             user.hashed_password, password_fingerprint
@@ -494,7 +462,6 @@ class UserManager:
         self,
         obj_in: UserUpdate,
         user: User,
-        safe: bool = False,
         request: Request | None = None,
     ) -> User:
         """
@@ -572,6 +539,37 @@ class UserManager:
                 logger.info(f"Verification email sent to {user.email}")
             except Exception as e:
                 logger.error(f"Failed to send verification email to {user.email}: {e}")
+
+    async def on_after_register_by_oauth(
+        self, user: User, password: str | None = None, request: Request | None = None
+    ):
+        """OAuth로 신규 가입 후(관리자)"""
+        logger.info(f"New user registered via OAuth: {user.email} (ID: {user.id})")
+
+        if settings.emails_enabled and password is not None:
+            try:
+                # 신규 계정 생성 이메일 발송
+                origin = (
+                    str(request.base_url).rstrip("/")
+                    if request
+                    else settings.FRONTEND_URL
+                )
+                email_data = generate_new_account_email(
+                    email_to=user.email,
+                    username=user.full_name or user.email,
+                    password=password,
+                    origin=origin,
+                )
+
+                send_email(
+                    email_to=user.email,
+                    subject=email_data.subject,
+                    html_content=email_data.html_content,
+                )
+
+                logger.info(f"New account email sent to {user.email}")
+            except Exception as e:
+                logger.error(f"Failed to send new account email to {user.email}: {e}")
 
     async def on_after_update(
         self, user: User, update_dict: dict, request: Request | None = None

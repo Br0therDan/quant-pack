@@ -14,7 +14,7 @@ from .exceptions import (
     UserNotExists,
 )
 from .models import User
-from .security import validate_token
+from .security.jwt import decode_jwt
 from .user_manager import UserManager
 
 logger = logging.getLogger(__name__)
@@ -40,8 +40,8 @@ async def get_current_user(
         raise UserNotExists(identifier="token", identifier_type="authentication token")
 
     try:
-        decoded_token = validate_token(token)
-        user_id = decoded_token.sub
+        decoded_token = decode_jwt(token)
+        user_id = decoded_token["sub"]
         if not user_id:
             raise UserNotExists(identifier="user", identifier_type="authenticated user")
         user = await user_manager.get(PydanticObjectId(user_id))

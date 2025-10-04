@@ -37,9 +37,7 @@ def get_users_router() -> APIRouter:
     ) -> UserResponse:
         # UserManager.update에서 이미 적절한 예외를 발생시키므로
         # 직접 전파하도록 수정
-        user = await user_manager.update(
-            obj_in, current_user, safe=True, request=request
-        )
+        user = await user_manager.update(obj_in, current_user, request=request)
         return UserResponse.model_validate(user, from_attributes=True)
 
     @router.get(
@@ -69,9 +67,7 @@ def get_users_router() -> APIRouter:
 
         # UserManager.update에서 이미 적절한 예외를 발생시키므로
         # 직접 전파하도록 수정
-        updated_user = await user_manager.update(
-            obj_in, user, safe=False, request=request
-        )
+        updated_user = await user_manager.update(obj_in, user, request=request)
         return UserResponse.model_validate(updated_user, from_attributes=True)
 
     @router.delete(

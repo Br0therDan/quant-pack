@@ -1,22 +1,12 @@
 import secrets
-from typing import Protocol
+import string
 
 from pwdlib import PasswordHash
 from pwdlib.hashers.argon2 import Argon2Hasher
 from pwdlib.hashers.bcrypt import BcryptHasher
 
 
-class PasswordHelperProtocol(Protocol):
-    def verify_and_update(
-        self, plain_password: str, hashed_password: str
-    ) -> tuple[bool, str | None]: ...  # pragma: no cover
-
-    def hash(self, password: str) -> str: ...  # pragma: no cover
-
-    def generate(self) -> str: ...  # pragma: no cover
-
-
-class PasswordHelper(PasswordHelperProtocol):
+class PasswordHelper:
     def __init__(self, password_hash: PasswordHash | None = None) -> None:
         if password_hash is None:
             self.password_hash = PasswordHash(
@@ -38,3 +28,11 @@ class PasswordHelper(PasswordHelperProtocol):
 
     def generate(self) -> str:
         return secrets.token_urlsafe()
+
+    def generate_secure_password(self, length: int = 12) -> str:
+        characters = string.ascii_letters + string.digits + string.punctuation
+        password = "".join(secrets.choice(characters) for _ in range(length))
+        return password
+
+
+password_helper = PasswordHelper()

@@ -26,6 +26,14 @@ class CommonSettings(BaseSettings):
     DEV_MODE: bool = Field(default=True, description="Development mode")
     MOCK_DATABASE: bool = Field(default=False, description="Use mock database")
 
+    FRONTEND_URL: str = Field(
+        default="http://localhost:3000", description="Frontend application URL"
+    )  # TODO: Need to deprecated after refactoring
+    BACKEND_URL: str = Field(
+        default="http://localhost:8000", description="Backend application URL"
+    )  # TODO: Need to deprecated after refactoring
+
+    # Default Superuser Settings
     SUPERUSER_EMAIL: EmailStr = Field(
         default="your_email@example.com", description="Superuser email"
     )
@@ -36,18 +44,14 @@ class CommonSettings(BaseSettings):
         default="Admin User", description="Superuser full name"
     )
 
-    FRONTEND_URL: str = Field(
-        default="http://localhost:3000", description="Frontend application URL"
-    )
+    # Application Settings
+    AUTH_ENABLED: bool = Field(default=True, description="Enable authentication system")
+    AUTH_API_VERSION: str = Field(default="v1", description="IAM API version")
+
     # Database Settings
     MONGODB_SERVER: str = Field(default="localhost:27019", description="MongoDB host")
     MONGODB_USERNAME: str = Field(default="root", description="MongoDB username")
     MONGODB_PASSWORD: str = Field(default="example", description="MongoDB password")
-
-    ALPHA_VANTAGE_API_KEY: str = Field(
-        default="demo", description="Alpha Vantage API Key"
-    )
-    AUTH_API_VERSION: str = Field(default="v1", description="IAM API version")
 
     # Token and Security Settings
     SECRET_KEY: str = Field(
@@ -76,22 +80,9 @@ class CommonSettings(BaseSettings):
     VERIFY_TOKEN_EXPIRE_MINUTES: int = Field(
         default=60, description="Verify user token expiration in minutes"
     )
-
-    EMAIL_TOKEN_EXPIRE_HOURS: int = 48  # 이메일 토큰 만료 시간 (시간 단위)
-
-    # OAuth2 Settings
-    GOOGLE_CLIENT_ID: str = "your-google-client-id"
-    GOOGLE_CLIENT_SECRET: str = "your-google-client-secret"
-
-    OKTA_CLIENT_ID: str = "your-okta-client-id"
-    OKTA_CLIENT_SECRET: str = "your-okta-client-secret"
-    OKTA_DOMAIN: str = "your-okta-domain"
-
-    KAKAO_CLIENT_ID: str = "your-kakao-client-id"
-    KAKAO_CLIENT_SECRET: str = "your-kakao-client-secret"
-
-    NAVER_CLIENT_ID: str = "your-naver-client-id"
-    NAVER_CLIENT_SECRET: str = "your-naver-client-secret"
+    EMAIL_TOKEN_EXPIRE_HOURS: int = Field(
+        default=48, description="Token for Email Verification expiration in hours"
+    )
 
     # API Settings
     CORS_ORIGINS: list[str] = Field(
@@ -147,6 +138,50 @@ class CommonSettings(BaseSettings):
     @computed_field
     def emails_enabled(self) -> bool:
         return bool(self.SMTP_HOST == "your_smtp_host")
+
+    # External API Keys
+
+    # OAuth2 Client IDs and Secrets
+    OAUTH2_PROVIDERS = Literal["google", "okta", "kakao", "naver"]
+    GOOGLE_CLIENT_ID: str = Field(
+        default="your-google-client-id", description="Google client ID"
+    )
+    GOOGLE_CLIENT_SECRET: str = Field(
+        default="your-google-client-secret", description="Google client secret"
+    )
+    GOOGLE_OAUTH_SCOPES: list[str] = Field(
+        default=["openid", "email", "profile"], description="Google OAuth scopes"
+    )
+    OKTA_CLIENT_ID: str = Field(
+        default="your-okta-client-id", description="Okta client ID"
+    )
+    OKTA_CLIENT_SECRET: str = Field(
+        default="your-okta-client-secret", description="Okta client secret"
+    )
+    OKTA_DOMAIN: str = Field(default="your-okta-domain", description="Okta domain")
+    KAKAO_CLIENT_ID: str = Field(
+        default="your-kakao-client-id", description="Kakao client ID"
+    )
+    KAKAO_CLIENT_SECRET: str = Field(
+        default="your-kakao-client-secret", description="Kakao client secret"
+    )
+    KAKAO_OAUTH_SCOPES: list[str] = Field(
+        default=["profile", "account_email"], description="Kakao OAuth scopes"
+    )
+    NAVER_CLIENT_ID: str = Field(
+        default="your-naver-client-id", description="Naver client ID"
+    )
+    NAVER_CLIENT_SECRET: str = Field(
+        default="your-naver-client-secret", description="Naver client secret"
+    )
+    NAVER_OAUTH_SCOPES: list[str] = Field(
+        default=["profile", "email"], description="Naver OAuth scopes"
+    )
+
+    # Market Data API Keys
+    ALPHA_VANTAGE_API_KEY: str = Field(
+        default="demo", description="Alpha Vantage API Key"
+    )
 
 
 # Global settings instance
