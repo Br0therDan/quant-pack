@@ -1,12 +1,15 @@
-from pydantic import BaseModel
+from datetime import UTC, datetime, timedelta
 
+from pydantic import BaseModel, Field
+
+from ...core.config import settings
 from .user import UserResponse
 
 
 class LoginResponse(BaseModel):
-    access_token: str
+    access_token: str | None = None
     refresh_token: str | None = None
-    token_type: str = "bearer"
+    token_type: str | None = None
     user_info: UserResponse
 
     class Config:
@@ -38,33 +41,24 @@ class OAuth2AuthorizeResponse(BaseModel):
         }
 
 
-class Token(BaseModel):
-    access_token: str
-    refresh_token: str | None = None
-    token_type: str
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "access_token": "string",
-                "refresh_token": "string",
-                "token_type": "bearer",
-            }
-        }
+now = datetime.now(UTC)
+access_exp = now + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+refresh_exp = now + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+default_audience = [settings.DEFAULT_AUDIENCE]
 
 
 class AccessTokenData(BaseModel):
-    sub: str | None = None
+    sub: str
     email: str | None = None
-    exp: int | None = None
-    iat: int | None = None
-    aud: list[str] | None = None
+    exp: int = Field(default_factory=lambda: int(access_exp.timestamp()))
+    iat: int = Field(default_factory=lambda: int(now.timestamp()))
+    aud: list[str] = Field(default_factory=lambda: default_audience)
     type: str = "access"
 
 
 class RefreshTokenData(BaseModel):
-    sub: str | None = None
-    exp: int | None = None
-    iat: int | None = None
-    aud: list[str] | None = None
+    sub: str
+    exp: int = Field(default_factory=lambda: int(refresh_exp.timestamp()))
+    iat: int = Field(default_factory=lambda: int(now.timestamp()))
+    aud: list[str] = Field(default_factory=lambda: default_audience)
     type: str = "refresh"

@@ -1,6 +1,6 @@
 """Common configuration settings for all microservices."""
 
-from typing import Self
+from typing import Literal, Self
 
 from pydantic import EmailStr, Field, computed_field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -47,12 +47,22 @@ class CommonSettings(BaseSettings):
     ALPHA_VANTAGE_API_KEY: str = Field(
         default="demo", description="Alpha Vantage API Key"
     )
-
     AUTH_API_VERSION: str = Field(default="v1", description="IAM API version")
 
-    # Security Settings
+    # Token and Security Settings
     SECRET_KEY: str = Field(
         default="dev-secret-key-change-in-production", description="Secret key for JWT"
+    )
+    TOKEN_TRANSPORT_TYPE: Literal["header", "cookie", "hybrid"] = Field(
+        default="hybrid", description="Token transport type (header or cookie)"
+    )
+    HTTPONLY_COOKIES: bool = Field(default=False, description="Use HTTPOnly cookies")
+    SAMESITE_COOKIES: Literal["lax", "strict", "none"] = Field(
+        default="lax", description="SameSite attribute for cookies (lax, strict, none)"
+    )
+    ALGORITHM: str = Field(default="HS256", description="JWT algorithm")
+    DEFAULT_AUDIENCE: str = Field(
+        default="your-audience", description="Default audience for JWT"
     )
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(
         default=480, description="Access token expiration in minutes (8 hours)"
@@ -60,17 +70,16 @@ class CommonSettings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = Field(
         default=7, description="Refresh token expiration in days"
     )
-
     RESET_TOKEN_EXPIRE_MINUTES: int = Field(
         default=60, description="Reset password token expiration in minutes"
     )
     VERIFY_TOKEN_EXPIRE_MINUTES: int = Field(
         default=60, description="Verify user token expiration in minutes"
     )
-    ALGORITHM: str = Field(default="HS256", description="JWT algorithm")
 
     EMAIL_TOKEN_EXPIRE_HOURS: int = 48  # 이메일 토큰 만료 시간 (시간 단위)
 
+    # OAuth2 Settings
     GOOGLE_CLIENT_ID: str = "your-google-client-id"
     GOOGLE_CLIENT_SECRET: str = "your-google-client-secret"
 
