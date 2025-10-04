@@ -1,9 +1,10 @@
 # path: app/api/deps.py
 
 import logging
+from typing import Optional
 
 from beanie import PydanticObjectId
-from fastapi import Depends
+from fastapi import Cookie, Depends
 from fastapi.security import OAuth2PasswordBearer
 
 from ..core.config import settings
@@ -30,8 +31,24 @@ reusable_oauth2 = OAuth2PasswordBearer(
 )
 
 
+def get_token_from_cookie_or_header(
+    token_from_cookie: Optional[str] = Cookie(None),
+    token_from_header: Optional[str] = Depends(reusable_oauth2),
+) -> str:
+    """
+    1) 쿠키에 토큰이 있으면 그걸 사용
+    2) 없으면 헤더에서 토큰 추출 (Bearer)
+    3) 둘 다 없으면 403 에러
+    """
+    if token_from_cookie:
+        return token_from_cookie
+    if token_from_header:
+        return token_from_header
+    raise UserNotExists(identifier="token", identifier_type="authentication token")
+
+
 async def get_current_user(
-    token: str = Depends(reusable_oauth2),
+    token: str = Depends(get_token_from_cookie_or_header),
 ) -> User:
     """
     토큰(쿠키 또는 헤더)을 디코딩하여 현재 사용자를 반환합니다.
