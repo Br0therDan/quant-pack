@@ -1,5 +1,4 @@
 # path: app/schemas/oauth2.py
-from typing import Optional
 
 from pydantic import BaseModel
 
@@ -11,11 +10,11 @@ class BaseOAuthToken(BaseModel):
     access_token: str
     token_type: str | None = None
     refresh_token: str | None = None
-    expires_in: Optional[int] = None
-    expires_at: Optional[int] = None
+    expires_in: int | None = None
+    expires_at: int | None = None
     scope: str | None = None
     id_token: str | None = None
-    refresh_token_expires_in: Optional[int] = None
+    refresh_token_expires_in: int | None = None
 
 
 # -------------------
