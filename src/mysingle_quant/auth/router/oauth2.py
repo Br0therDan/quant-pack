@@ -45,7 +45,7 @@ def get_oauth2_router() -> APIRouter:
         if redirect_url is not None:
             authorize_redirect_url = redirect_url
         else:
-            authorize_redirect_url = f"{request.url.scheme}://{request.url.hostname}/api/oauth2/{provider}/callback"
+            authorize_redirect_url = f"{request.url.scheme}://{settings.FRONTEND_URL}/api/oauth2/{provider}/callback"
 
         state_data: dict[str, str] = {}
         state = generate_state_token(state_data, settings.SECRET_KEY)
