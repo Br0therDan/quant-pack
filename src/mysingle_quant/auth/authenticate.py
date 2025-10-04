@@ -53,7 +53,15 @@ class Authentication:
             key=self.secret_key,
             algorithm=self.algorithm,
         )
-        if self.transport_type == "cookie" or self.transport_type == "hybrid":
+
+        # 토큰 전송 방식에 따른 처리
+        token_response = {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer",
+        }
+        if self.transport_type in ["cookie", "hybrid"]:
+            # 쿠키에 토큰 설정
             set_cookie(
                 response,
                 key="access_token",
@@ -67,13 +75,11 @@ class Authentication:
                 max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
             )
 
-        if self.transport_type == "header" or self.transport_type == "hybrid":
-            return {
-                "access_token": access_token,
-                "refresh_token": refresh_token,
-                "token_type": "bearer",
-            }
+        if self.transport_type in ["bearer", "hybrid"]:
+            # Bearer 방식에서는 토큰 정보 반환
+            return token_response
 
+        # Cookie 전용 방식에서는 None 반환 (토큰은 쿠키에만 설정)
         return None
 
     def refresh_token(

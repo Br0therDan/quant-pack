@@ -53,8 +53,8 @@ class CommonSettings(BaseSettings):
     SECRET_KEY: str = Field(
         default="dev-secret-key-change-in-production", description="Secret key for JWT"
     )
-    TOKEN_TRANSPORT_TYPE: Literal["header", "cookie", "hybrid"] = Field(
-        default="hybrid", description="Token transport type (header or cookie)"
+    TOKEN_TRANSPORT_TYPE: Literal["bearer", "cookie", "hybrid"] = Field(
+        default="hybrid", description="Token transport type (bearer, cookie, or hybrid)"
     )
     HTTPONLY_COOKIES: bool = Field(default=False, description="Use HTTPOnly cookies")
     SAMESITE_COOKIES: Literal["lax", "strict", "none"] = Field(
