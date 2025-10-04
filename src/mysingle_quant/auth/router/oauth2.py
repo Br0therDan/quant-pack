@@ -1,13 +1,12 @@
-from fastapi import APIRouter, HTTPException, Query, Request, status
+from fastapi import APIRouter, Query, Request
 from httpx_oauth.integrations.fastapi import OAuth2AuthorizeCallback
-from jwt import DecodeError
 
 from ...core.config import settings
 from ..authenticate import SecretType
 from ..exceptions import AuthenticationFailed
 from ..oauth2.clients import get_oauth2_client
 from ..schemas import OAuth2AuthorizeResponse, UserResponse
-from ..security.jwt import decode_jwt, generate_jwt
+from ..security.jwt import generate_jwt
 from ..user_manager import UserManager
 
 user_manager = UserManager()
@@ -45,14 +44,16 @@ def get_oauth2_router() -> APIRouter:
         if redirect_url is not None:
             authorize_redirect_url = redirect_url
         else:
-            authorize_redirect_url = f"{request.url.scheme}://{settings.FRONTEND_URL}/api/oauth2/{provider}/callback"
+            authorize_redirect_url = (
+                f"{settings.FRONTEND_URL}/api/oauth2/{provider}/callback"
+            )
 
-        state_data: dict[str, str] = {}
-        state = generate_state_token(state_data, settings.SECRET_KEY)
+        # state_data: dict[str, str] = {}
+        # state = generate_state_token(state_data, settings.SECRET_KEY)
 
         authorization_url = await oauth_client.get_authorization_url(
             redirect_uri=authorize_redirect_url,
-            state=state,
+            # state=state,
         )
 
         return OAuth2AuthorizeResponse(authorization_url=authorization_url)
@@ -75,12 +76,12 @@ def get_oauth2_router() -> APIRouter:
 
         if account_email is None:
             raise AuthenticationFailed("OAuth provider did not provide email")
-        if not state:
-            raise AuthenticationFailed("Missing OAuth state token")
-        try:
-            decode_jwt(state, settings.SECRET_KEY, ["users:oauth-state"])
-        except DecodeError:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
+        # if not state:
+        #     raise AuthenticationFailed("Missing OAuth state token")
+        # try:
+        #     decode_jwt(state, settings.SECRET_KEY, ["users:oauth-state"])
+        # except DecodeError:
+        #     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
 
         user = await user_manager.oauth_callback(
             oauth_client.name,
