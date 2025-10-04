@@ -12,7 +12,6 @@ from fastapi.routing import APIRoute
 from ..auth.exception_handlers import register_auth_exception_handlers
 from ..auth.init_data import create_first_super_admin
 from ..auth.models import OAuthAccount, User
-from ..auth.router import auth_router, user_router
 from ..health import create_health_router
 from ..metrics import create_metrics_middleware
 from .config import settings
@@ -43,6 +42,7 @@ class AppConfig:
     database_name: str | None = None
     # Security
     enable_auth: bool = False
+    enable_oauth: bool = False
     public_paths: list[str] | None = None
     # CORS
     cors_origins: list[str] | None = None
@@ -116,6 +116,7 @@ def create_fastapi_app(
     document_models: list[type[Document]] | None = None,
     database_name: str | None = None,
     enable_auth: bool = False,
+    enable_oauth: bool = False,
     public_paths: list[str] | None = None,
     cors_origins: list[str] | None = None,
     enable_metrics: bool = True,
@@ -151,6 +152,7 @@ def create_fastapi_app(
         document_models=document_models,
         database_name=database_name,
         enable_auth=enable_auth,
+        enable_oauth=enable_oauth,
         public_paths=public_paths,
         cors_origins=cors_origins,
         enable_metrics=enable_metrics,
@@ -222,7 +224,10 @@ def create_fastapi_app(
         app.include_router(health_router)
         logger.info(f"❤️ Health check endpoints added for {config.service_name}")
 
+    # Include auth routers if enabled
     if config.enable_auth:
+        from ..auth.router import auth_router, user_router
+
         app.include_router(
             auth_router, prefix=f"/api/{settings.AUTH_API_VERSION}/auth", tags=["Auth"]
         )
@@ -234,5 +239,18 @@ def create_fastapi_app(
         logger.info(
             f"🔐 Auth routes and exception handlers added for {config.service_name}"
         )
+        # Include OAuth2 routers if enabled
+        if config.enable_oauth:
+            try:
+                from ..auth.router import oauth2_router
+
+                app.include_router(
+                    oauth2_router,
+                    prefix=f"/api/{settings.AUTH_API_VERSION}/oauth2",
+                    tags=["OAuth2"],
+                )
+                logger.info(f"🔐 OAuth2 routes added for {config.service_name}")
+            except Exception as e:
+                logger.error(f"⚠️ Failed to include OAuth2 router: {e}")
 
     return app
