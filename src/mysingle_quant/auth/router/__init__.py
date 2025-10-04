@@ -19,7 +19,7 @@ auth_router.include_router(get_verify_router())
 
 oauth2_router = APIRouter()
 
-auth_router.include_router(get_oauth2_router())
+oauth2_router.include_router(get_oauth2_router())
 
 user_router = APIRouter()
 
