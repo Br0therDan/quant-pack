@@ -31,6 +31,7 @@ def get_oauth2_router(
     else:
         oauth2_authorize_callback = OAuth2AuthorizeCallback(
             oauth_client,
+            route_name=callback_route_name,
         )
 
     @router.get(

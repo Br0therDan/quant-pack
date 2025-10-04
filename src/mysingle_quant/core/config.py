@@ -142,7 +142,6 @@ class CommonSettings(BaseSettings):
     # External API Keys
 
     # OAuth2 Client IDs and Secrets
-    OAUTH2_PROVIDERS = Literal["google", "okta", "kakao", "naver"]
     GOOGLE_CLIENT_ID: str = Field(
         default="your-google-client-id", description="Google client ID"
     )
