@@ -28,3 +28,8 @@ sequenceDiagram
     Browser->>FastAPI: 요청 Authorization: Bearer <NextAuth JWT>
     FastAPI->>FastAPI: JWT 검증 (e.g. issuer, signature, email)
 ```
+
+### 구글
+http://localhost:3000/api/oauth2/google/callback?
+state=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJ1c2VyczpvYXV0aC1zdGF0ZSJ9.0htGWaINXB8i9pawAHpMpUcF8D4otF7CbPIsV4uwxSE&
+code=4%2F0AVGzR1BRTxgz21JpiZEGxhOP6TPRGZ29C8X_Uwr61QRvVjKCue0Hf1ZF500z6IZ3-7JaCw&scope=email+profile+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email+openid&authuser=0&hd=mysingle.io&prompt=consent

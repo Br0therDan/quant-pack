@@ -17,7 +17,6 @@ def get_oauth_management_router() -> APIRouter:
     @router.get(
         "/me/oauth-accounts",
         response_model=dict,
-        summary="내 OAuth 계정 목록 조회",
     )
     async def get_my_oauth_accounts(
         current_user: User = Depends(get_current_active_verified_user),
@@ -40,7 +39,6 @@ def get_oauth_management_router() -> APIRouter:
     @router.delete(
         "/me/oauth-accounts/{oauth_name}/{account_id}",
         status_code=status.HTTP_204_NO_CONTENT,
-        summary="OAuth 계정 연결 해제",
     )
     async def remove_oauth_account(
         oauth_name: str,
@@ -58,7 +56,6 @@ def get_oauth_management_router() -> APIRouter:
         "/users/{user_id}/oauth-accounts",
         response_model=dict,
         dependencies=[Depends(get_current_active_verified_user)],
-        summary="사용자 OAuth 계정 목록 조회 (관리자용)",
     )
     async def get_user_oauth_accounts(
         user_id: PydanticObjectId,

@@ -66,6 +66,7 @@ def get_oauth2_router() -> APIRouter:
     async def callback(
         request: Request,
         provider: str,
+        code: str = Query(...),
     ) -> UserResponse:
         oauth_client = get_oauth2_client(provider_name=provider)
         token, state = await get_oauth2_authorize_callback(provider)(request)

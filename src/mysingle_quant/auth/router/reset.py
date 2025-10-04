@@ -17,7 +17,6 @@ def get_reset_password_router() -> APIRouter:
     @router.post(
         "/forgot-password",
         status_code=status.HTTP_202_ACCEPTED,
-        name="reset:forgot_password",
     )
     async def forgot_password(
         request: Request,
@@ -37,7 +36,6 @@ def get_reset_password_router() -> APIRouter:
 
     @router.post(
         "/reset-password",
-        name="reset:reset_password",
     )
     async def reset_password(
         request: Request,
