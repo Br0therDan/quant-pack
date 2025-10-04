@@ -32,8 +32,9 @@ def get_oauth2_client(provider_name: str) -> BaseOAuth2:
         raise ValueError(f"Unsupported OAuth2 provider: {provider_name}")
 
 
-def get_oauth2_authorize_callback(provider_name: str) -> OAuth2AuthorizeCallback:
-    return OAuth2AuthorizeCallback(
-        client=get_oauth2_client(provider_name),
-        redirect_url=f"{settings.FRONTEND_URL}/api/oauth2/{provider_name}",
-    )
+def get_oauth2_authorize_callback(
+    provider_name: str, redirect_url: str | None = None
+) -> OAuth2AuthorizeCallback:
+    """주어진 공급자 이름에 해당하는 OAuth2AuthorizeCallback을 반환합니다."""
+    oauth_client = get_oauth2_client(provider_name=provider_name)
+    return OAuth2AuthorizeCallback(oauth_client, redirect_url=redirect_url)
