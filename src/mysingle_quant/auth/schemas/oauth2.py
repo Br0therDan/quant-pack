@@ -9,12 +9,12 @@ from pydantic import BaseModel
 # -------------------
 class BaseOAuthToken(BaseModel):
     access_token: str
-    token_type: Optional[str] = None
-    refresh_token: Optional[str] = None
+    token_type: str | None = None
+    refresh_token: str | None = None
     expires_in: Optional[int] = None
     expires_at: Optional[int] = None
-    scope: Optional[str] = None
-    id_token: Optional[str] = None
+    scope: str | None = None
+    id_token: str | None = None
     refresh_token_expires_in: Optional[int] = None
 
 
@@ -30,11 +30,11 @@ class GoogleProfile(BaseModel):
     id: str
     email: str
     verified_email: bool
-    name: Optional[str] = None
-    given_name: Optional[str] = None
-    family_name: Optional[str] = None
-    picture: Optional[str] = None
-    hd: Optional[str] = None
+    name: str | None = None
+    given_name: str | None = None
+    family_name: str | None = None
+    picture: str | None = None
+    hd: str | None = None
 
 
 # -------------------
@@ -56,7 +56,7 @@ class KakaoProfile(BaseModel):
 
         class Profile(BaseModel):
             nickname: str
-            profile_image_url: Optional[str]
+            profile_image_url: str | None
 
         profile: Profile
 
