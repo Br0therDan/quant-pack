@@ -8,7 +8,6 @@ from ..core.config import settings
 from ..core.logging_config import get_logger
 from .models import User
 from .schemas.auth import AccessTokenData, RefreshTokenData
-from .schemas.user import UserResponse
 from .security.cookie import delete_cookie, set_auth_cookies
 from .security.jwt import decode_jwt, generate_jwt
 from .user_manager import UserManager
@@ -55,7 +54,6 @@ class Authentication:
                 response,
                 access_token=access_token,
                 refresh_token=refresh_token,
-                user_info=UserResponse.model_validate(user),
             )
 
         if self.transport_type in ["bearer", "hybrid"]:
@@ -88,14 +86,11 @@ class Authentication:
         access_token = generate_jwt(payload=access_token_data.model_dump())
         new_refresh_token = generate_jwt(payload=refresh_token_data.model_dump())
 
-        user = user_manager.read_user_from_token(access_token)
-
         if transport_type == "cookie":
             set_auth_cookies(
                 response,
                 access_token=access_token,
                 refresh_token=new_refresh_token,
-                user_info=UserResponse.model_validate(user),
             )
 
         if transport_type == "header":

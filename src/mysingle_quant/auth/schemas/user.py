@@ -11,6 +11,7 @@ class UserResponse(BaseModel):
     is_active: bool = True
     is_superuser: bool = False
     is_verified: bool = False
+    avatar_url: str | None = None
     oauth_accounts: list["OAuthAccount"] = Field(default_factory=list)
 
     class Config:
@@ -23,6 +24,7 @@ class UserResponse(BaseModel):
                 "is_active": True,
                 "is_superuser": False,
                 "is_verified": False,
+                "avatar_url": "string",
                 "oauth_accounts": [
                     {
                         "_id": "string",
@@ -45,6 +47,7 @@ class UserCreate(BaseModel):
     is_active: bool | None = True
     is_superuser: bool | None = False
     is_verified: bool | None = False
+    avatar_url: str | None = None
 
     class Config:
         json_schema_extra = {
@@ -55,6 +58,7 @@ class UserCreate(BaseModel):
                 "is_active": True,
                 "is_superuser": False,
                 "is_verified": False,
+                "avatar_url": "string",
             }
         }
 
@@ -66,6 +70,7 @@ class UserUpdate(BaseModel):
     is_active: bool | None = None
     is_superuser: bool | None = None
     is_verified: bool | None = None
+    avatar_url: str | None = None
 
     class Config:
         json_schema_extra = {
@@ -76,6 +81,7 @@ class UserUpdate(BaseModel):
                 "is_active": True,
                 "is_superuser": False,
                 "is_verified": False,
+                "avatar_url": "string",
             }
         }
 
