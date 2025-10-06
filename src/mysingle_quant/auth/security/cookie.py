@@ -13,8 +13,8 @@ def set_cookie(
         key=key,
         value=value,
         max_age=max_age,
-        httponly=settings.HTTPONLY_COOKIES,
-        samesite=settings.SAMESITE_COOKIES,
+        httponly=settings.ENVIRONMENT == "production",
+        samesite="lax" if settings.ENVIRONMENT == "production" else None,
         secure=settings.ENVIRONMENT == "production",
     )
 
