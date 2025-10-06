@@ -4,7 +4,7 @@ import logging
 
 from beanie import PydanticObjectId
 from fastapi import Cookie, Depends
-from fastapi.security import HTTPBearer, OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordBearer
 
 from ..core.config import settings
 from .exceptions import (
@@ -29,13 +29,9 @@ reusable_oauth2 = OAuth2PasswordBearer(
     tokenUrl=f"/api/{VERSION}/auth/login", auto_error=False
 )
 
-get_token = HTTPBearer(
-    scheme_name="Token or Cookie",
-)
-
 
 def get_token_from_cookie_or_header(
-    token_from_cookie: str | None = Cookie(alias="access_token"),
+    token_from_cookie: str | None = Cookie(None, alias="access_token"),
     token_from_header: str | None = Depends(reusable_oauth2),
 ) -> str:
     """
