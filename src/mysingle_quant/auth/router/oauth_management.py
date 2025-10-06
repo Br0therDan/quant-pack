@@ -3,7 +3,7 @@
 from beanie import PydanticObjectId
 from fastapi import APIRouter, Depends, Request, status
 
-from ..deps import get_current_active_verified_user
+from ..deps import get_current_active_superuser, get_current_active_verified_user
 from ..models import User
 from ..user_manager import UserManager
 
@@ -53,9 +53,9 @@ def get_oauth_management_router() -> APIRouter:
         )
 
     @router.get(
-        "/users/{user_id}/oauth-accounts",
+        "/{user_id}/oauth-accounts",
         response_model=dict,
-        dependencies=[Depends(get_current_active_verified_user)],
+        dependencies=[Depends(get_current_active_superuser)],
     )
     async def get_user_oauth_accounts(
         user_id: PydanticObjectId,
