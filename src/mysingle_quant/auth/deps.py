@@ -35,7 +35,7 @@ get_token = HTTPBearer(
 
 
 def get_token_from_cookie_or_header(
-    token_from_cookie: str | None = Cookie(None),
+    token_from_cookie: str | None = Cookie(alias="access_token"),
     token_from_header: str | None = Depends(reusable_oauth2),
 ) -> str:
     """
