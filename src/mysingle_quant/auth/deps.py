@@ -1,7 +1,6 @@
 # path: app/api/deps.py
 
 import logging
-from typing import Optional
 
 from beanie import PydanticObjectId
 from fastapi import Cookie, Depends
@@ -36,8 +35,8 @@ get_token = HTTPBearer(
 
 
 def get_token_from_cookie_or_header(
-    token_from_cookie: Optional[str] = Cookie(None),
-    token_from_header: Optional[str] = Depends(reusable_oauth2),
+    token_from_cookie: str | None = Cookie(None),
+    token_from_header: str | None = Depends(reusable_oauth2),
 ) -> str:
     """
     1) 쿠키에 토큰이 있으면 그걸 사용
