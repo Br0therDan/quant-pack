@@ -1,6 +1,9 @@
+import json
+
 from fastapi import Response
 
 from ...core.config import settings
+from ..schemas.user import UserResponse
 
 
 def set_cookie(
@@ -27,6 +30,7 @@ def set_auth_cookies(
     response: Response,
     access_token: str,
     refresh_token: str,
+    user_info: UserResponse | None = None,
 ) -> None:
     set_cookie(
         response,
@@ -39,4 +43,10 @@ def set_auth_cookies(
         key="refresh_token",
         value=refresh_token,
         max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+    )
+    set_cookie(
+        response,
+        key="user_info",
+        value=json.dumps(user_info),
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )

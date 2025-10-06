@@ -8,6 +8,9 @@ from beanie import Document
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRoute
+from fastapi_oauth2.config import OAuth2Config
+from fastapi_oauth2.middleware import OAuth2Middleware
+from fastapi_oauth2.router import router as oauth2_router
 
 from ..auth.exception_handlers import register_auth_exception_handlers
 from ..auth.init_data import create_first_super_admin
@@ -241,16 +244,23 @@ def create_fastapi_app(
         )
         # Include OAuth2 routers if enabled
         if config.enable_oauth:
-            try:
-                from ..auth.router import oauth2_router
+            app.include_router(
+                oauth2_router,
+                prefix=f"/api/{settings.AUTH_API_VERSION}/oauth2",
+                tags=["OAuth2"],
+            )
+            config = OAuth2Config()
+            app.add_middleware(OAuth2Middleware, config=config)
+            # try:
+            #     from ..auth.router import oauth2_router
 
-                app.include_router(
-                    oauth2_router,
-                    prefix=f"/api/{settings.AUTH_API_VERSION}/oauth2",
-                    tags=["OAuth2"],
-                )
-                logger.info(f"🔐 OAuth2 routes added for {config.service_name}")
-            except Exception as e:
-                logger.error(f"⚠️ Failed to include OAuth2 router: {e}")
+            #     app.include_router(
+            #         oauth2_router,
+            #         prefix=f"/api/{settings.AUTH_API_VERSION}/oauth2",
+            #         tags=["OAuth2"],
+            #     )
+            #     logger.info(f"🔐 OAuth2 routes added for {config.service_name}")
+            # except Exception as e:
+            #     logger.error(f"⚠️ Failed to include OAuth2 router: {e}")
 
     return app

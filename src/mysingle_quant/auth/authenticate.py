@@ -8,11 +8,14 @@ from ..core.config import settings
 from ..core.logging_config import get_logger
 from .models import User
 from .schemas.auth import AccessTokenData, RefreshTokenData
-from .security.cookie import delete_cookie, set_auth_cookies, set_cookie
+from .schemas.user import UserResponse
+from .security.cookie import delete_cookie, set_auth_cookies
 from .security.jwt import decode_jwt, generate_jwt
+from .user_manager import UserManager
 
 logger = get_logger(__name__)
 SecretType = Union[str, SecretStr]
+user_manager = UserManager()
 
 
 class Authentication:
@@ -48,17 +51,11 @@ class Authentication:
         }
         if self.transport_type in ["cookie", "hybrid"]:
             # 쿠키에 토큰 설정
-            set_cookie(
+            set_auth_cookies(
                 response,
-                key="access_token",
-                value=access_token,
-                max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-            )
-            set_cookie(
-                response,
-                key="refresh_token",
-                value=refresh_token,
-                max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+                access_token=access_token,
+                refresh_token=refresh_token,
+                user_info=UserResponse.model_validate(user),
             )
 
         if self.transport_type in ["bearer", "hybrid"]:
@@ -84,7 +81,6 @@ class Authentication:
         user_id = payload.get("sub")
         if not user_id:
             raise HTTPException(status_code=401, detail="Invalid token payload")
-
         # 새로운 토큰 데이터 생성
         access_token_data = AccessTokenData(sub=user_id, email=payload.get("email", ""))
         refresh_token_data = RefreshTokenData(sub=user_id)
@@ -92,11 +88,14 @@ class Authentication:
         access_token = generate_jwt(payload=access_token_data.model_dump())
         new_refresh_token = generate_jwt(payload=refresh_token_data.model_dump())
 
+        user = user_manager.read_user_from_token(access_token)
+
         if transport_type == "cookie":
             set_auth_cookies(
                 response,
                 access_token=access_token,
                 refresh_token=new_refresh_token,
+                user_info=UserResponse.model_validate(user),
             )
 
         if transport_type == "header":
