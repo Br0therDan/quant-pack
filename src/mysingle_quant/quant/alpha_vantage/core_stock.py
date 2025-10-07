@@ -327,7 +327,28 @@ class CoreStock(BaseAPIHandler):
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
     ) -> list[dict[str, Any]]:
-        """Get intraday time series data"""
+        """
+        인트라데이 시계열 데이터를 가져옵니다
+
+        현재 및 20+ 년의 역사적 인트라데이 OHLCV 시계열 데이터를 반환합니다.
+        프리마켓 및 포스트마켓 시간대를 포함합니다.
+
+        Args:
+            symbol: 주식 심볼 (e.g., "AAPL")
+            interval: 시간 간격 (1min, 5min, 15min, 30min, 60min)
+            adjusted: 주가 조정 여부 (기본값: True)
+            extended_hours: 연장 거래 시간 포함 여부 (기본값: True)
+            outputsize: 출력 크기 ("compact": 최근 100개, "full": 전체)
+            start_date: 시작 날짜 (필터링용)
+            end_date: 종료 날짜 (필터링용)
+
+        Returns:
+            인트라데이 데이터 리스트 (datetime, open, high, low, close, volume)
+
+        사용 예제:
+            >>> data = await client.stock.intraday("AAPL", "5min")
+            >>> print(f"조회된 데이터: {len(data)}개")
+        """
         result = await self._call_core_stock_api(
             "TIME_SERIES_INTRADAY",
             symbol=symbol,
@@ -347,7 +368,25 @@ class CoreStock(BaseAPIHandler):
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
     ) -> list[dict[str, Any]]:
-        """Get daily time series data"""
+        """
+        일별 시계열 데이터를 가져옵니다
+
+        20+ 년의 역사적 일별 OHLCV 데이터를 반환합니다.
+        원시 (as-traded) 데이터로 제공됩니다.
+
+        Args:
+            symbol: 주식 심볼 (e.g., "AAPL")
+            outputsize: 출력 크기 ("compact": 최근 100개, "full": 전체)
+            start_date: 시작 날짜 (필터링용)
+            end_date: 종료 날짜 (필터링용)
+
+        Returns:
+            일별 데이터 리스트 (date, open, high, low, close, volume)
+
+        사용 예제:
+            >>> data = await client.stock.daily("AAPL")
+            >>> print(f"일별 데이터: {len(data)}개")
+        """
         result = await self._call_core_stock_api(
             "TIME_SERIES_DAILY",
             symbol=symbol,
@@ -364,7 +403,25 @@ class CoreStock(BaseAPIHandler):
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
     ) -> list[dict[str, Any]]:
-        """Get daily adjusted time series data"""
+        """
+        일별 조정 시계열 데이터를 가져옵니다
+
+        원시 일별 OHLCV 값, 조정 종가, 역사적 주식 분할 및 배당 이벤트를 반환합니다.
+        20+ 년의 역사적 데이터를 제공합니다.
+
+        Args:
+            symbol: 주식 심볼 (e.g., "AAPL")
+            outputsize: 출력 크기 ("compact": 최근 100개, "full": 전체)
+            start_date: 시작 날짜 (필터링용)
+            end_date: 종료 날짜 (필터링용)
+
+        Returns:
+            조정된 일별 데이터 리스트 (date, open, high, low, close, adjusted_close, volume, dividend_amount, split_coefficient)
+
+        사용 예제:
+            >>> data = await client.stock.daily_adjusted("AAPL")
+            >>> print(f"조정된 일별 데이터: {len(data)}개")
+        """
         result = await self._call_core_stock_api(
             "TIME_SERIES_DAILY_ADJUSTED",
             symbol=symbol,
@@ -443,7 +500,22 @@ class CoreStock(BaseAPIHandler):
         return result if isinstance(result, list) else []
 
     async def quote(self, symbol: str) -> dict[str, Any]:
-        """Get real-time quote"""
+        """
+        실시간 주가를 가져옵니다
+
+        주어진 심볼의 최신 주가 정보를 반환합니다.
+        시가, 고가, 저가, 종가, 거래량, 변동량 등을 포함합니다.
+
+        Args:
+            symbol: 주식 심볼 (e.g., "AAPL")
+
+        Returns:
+            실시간 주가 정보 딕셔너리
+
+        사용 예제:
+            >>> quote = await client.stock.quote("AAPL")
+            >>> print(f"현재 가: ${quote['price']}")
+        """
         result = await self._call_core_stock_api("GLOBAL_QUOTE", symbol=symbol)
         return result if isinstance(result, dict) else {}
 
@@ -453,11 +525,39 @@ class CoreStock(BaseAPIHandler):
         return result if isinstance(result, dict) else {}
 
     async def search(self, keywords: str) -> list[dict[str, Any]]:
-        """Search for symbols"""
+        """
+        심볼을 검색합니다
+
+        키워드로 주식, ETF 등의 심볼을 검색합니다.
+        검색 결과는 유사도에 따라 정렬됩니다.
+
+        Args:
+            keywords: 검색 키워드 (e.g., "Apple", "AAPL")
+
+        Returns:
+            검색 결과 리스트 (심볼, 이름, 타입, 지역, 시장 정보 포함)
+
+        사용 예제:
+            >>> results = await client.stock.search("Apple")
+            >>> for result in results:
+            ...     print(f"{result['symbol']}: {result['name']}")
+        """
         result = await self._call_core_stock_api("SYMBOL_SEARCH", keywords=keywords)
         return result if isinstance(result, list) else []
 
     async def market_status(self) -> dict[str, Any]:
-        """Get market status"""
+        """
+        글로벌 시장 상태를 가져옵니다
+
+        전 세계 주요 주식 시장의 개장/폐장 상태를 반환합니다.
+        리얼타임으로 업데이트됩니다.
+
+        Returns:
+            시장 상태 정보 딕셔너리
+
+        사용 예제:
+            >>> status = await client.stock.market_status()
+            >>> print(f"시장 상태: {status}")
+        """
         result = await self._call_core_stock_api("MARKET_STATUS")
         return result if isinstance(result, dict) else {}
