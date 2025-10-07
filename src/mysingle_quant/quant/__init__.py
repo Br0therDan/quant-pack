@@ -1,3 +1,3 @@
-from .alpha_vantage_client import AlphaVantageClient
+from .alpha_vantage import AlphaVantageClient
 
 __all__ = ["AlphaVantageClient"]

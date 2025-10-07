@@ -45,17 +45,17 @@ target-version = ['py312']
 [tool.ruff]
 line-length = 88
 target-version = "py312"
-lint.select = ["E", "F", "UP", "B", "SIM", "I"]
-lint.ignore = [
+
+[tool.ruff.lint]
+select = ["E", "F", "B", "SIM", "I"]
+ignore = [
     "F403",
     "F405",
     "B008",
     "B904",
     "B006",
     "SIM105",
-    "UP007",
-    "UP045",  # Optional[X] vs X | None 타입 어노테이션 형식 무시
-    "E501",
+    "E501",   # Line too long
 ]
 
 [tool.mypy]
