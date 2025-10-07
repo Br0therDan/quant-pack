@@ -1,10 +1,9 @@
 """
-Alpha Vantage API Client - Commodities Module
+Alpha Vantage API Client - 원자재 모듈
 
-This module provides access to Alpha Vantage's Commodities data APIs.
-Commodities APIs provide historical data for major commodities such as crude oil,
-natural gas, copper, wheat, etc., spanning across various temporal horizons
-(daily, weekly, monthly, quarterly, etc.)
+이 모듈은 Alpha Vantage의 상품 데이터 API에 대한 접근을 제공합니다.
+상품 API는 원유, 천연가스, 구리, 밀 등 주요 상품에 대한 과거 데이터를 제공하며,
+다양한 시간 범위(일별, 주별, 월별, 분기별 등)를 아우릅니다.
 """
 
 import logging
