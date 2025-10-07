@@ -54,6 +54,7 @@ lint.ignore = [
     "B006",
     "SIM105",
     "UP007",
+    "UP045",  # Optional[X] vs X | None 타입 어노테이션 형식 무시
     "E501",
 ]
 
