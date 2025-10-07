@@ -1,5 +1,9 @@
 """
-Alpha Vantage API Client - Technical Indicators Module
+Alpha Vantage API 클라이언트 - 기술적 지표 모듸
+
+주가 차트 분석에 필요한 다양한 기술적 지표들을 제공합니다.
+이동평균, 모멘텀 오실레이터, 변동성 지표 등을 포함하여
+트레이딩 및 투자 결정에 도움이 되는 데이터를 제공합니다.
 """
 
 import logging
@@ -15,7 +19,33 @@ logger = logging.getLogger(__name__)
 
 
 class TechnicalIndicators(BaseAPIHandler):
-    """Technical Indicators wrapper for Alpha Vantage API"""
+    """
+    Alpha Vantage 기술적 지표 API 핸들러
+
+    주가 차트 분석에 사용되는 다양한 기술적 지표들을 제공합니다.
+    모든 주요 기술적 지표들을 지원하며, 다양한 시간 간격으로 데이터를 제공합니다.
+
+    지원하는 지표 카테고리:
+    - 이동평균: SMA, EMA, WMA, DEMA, TEMA, TRIMA, KAMA, MAMA, T3
+    - 모멘텀 오실레이터: MACD, RSI, Stochastic, ADX, CCI, Aroon
+    - 변동성 지표: Bollinger Bands, ATR
+    - 거래량 지표: VWAP, OBV
+
+    사용 예제:
+        >>> client = AlphaVantageClient()
+        >>> # 20일 단순이동평균
+        >>> sma_data = await client.technical_indicators.sma(
+        ...     symbol="AAPL",
+        ...     interval="daily",
+        ...     time_period=20
+        ... )
+        >>> # RSI 지표
+        >>> rsi_data = await client.technical_indicators.rsi(
+        ...     symbol="AAPL",
+        ...     interval="daily",
+        ...     time_period=14
+        ... )
+    """
 
     async def _call_technical_indicator(
         self,
