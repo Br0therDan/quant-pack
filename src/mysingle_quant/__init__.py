@@ -14,9 +14,6 @@ from .core import (
     init_mongo,
     settings,
 )
-from .quant import (
-    AlphaVantageClient,
-)
 
 __all__ = [
     # Core: Config
@@ -37,6 +34,4 @@ __all__ = [
     "BaseTimeDoc",
     "BaseTimeDocWithUserId",
     "BaseResponseSchema",
-    # Quant: Alpha Vantage Client
-    "AlphaVantageClient",
 ]
